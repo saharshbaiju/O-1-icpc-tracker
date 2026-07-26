@@ -1,0 +1,183 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-display: 'Instrument Serif', serif;
+    --font-body: 'Inter', sans-serif;
+
+    /* Core surfaces — near-black with a violet cast */
+    --background: 255 24% 4%;
+    --foreground: 0 0% 100%;
+
+    --card: 252 20% 8%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 252 22% 7%;
+    --popover-foreground: 0 0% 100%;
+
+    /* Violet accent */
+    --primary: 258 90% 66%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 252 16% 13%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 252 16% 13%;
+    --muted-foreground: 252 8% 62%;
+
+    --accent: 252 16% 15%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 56%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 62% 48%;
+    --warning: 38 95% 58%;
+    --lime: 74 90% 62%;
+
+    --border: 252 14% 16%;
+    --input: 252 14% 16%;
+    --ring: 258 90% 66%;
+
+    --radius: 1rem;
+
+    /* Difficulty scale */
+    --easy: 152 62% 48%;
+    --medium: 38 95% 58%;
+    --hard: 0 72% 56%;
+
+    /* Chart series */
+    --chart-1: 258 90% 66%;
+    --chart-2: 74 90% 62%;
+    --chart-3: 190 90% 55%;
+    --chart-4: 320 80% 65%;
+    --chart-5: 38 95% 58%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.35);
+  }
+}
+
+@layer components {
+  /* Frosted control used on the video hero */
+  .liquid-glass {
+    background: rgba(255, 255, 255, 0.01);
+    background-blend-mode: luminosity;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: none;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .liquid-glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.4px;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.45) 0%,
+      rgba(255, 255, 255, 0.15) 20%,
+      rgba(255, 255, 255, 0) 40%,
+      rgba(255, 255, 255, 0) 60%,
+      rgba(255, 255, 255, 0.15) 80%,
+      rgba(255, 255, 255, 0.45) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Standard dashboard surface */
+  .panel {
+    @apply rounded-3xl border border-border/70 bg-card;
+  }
+
+  .panel-hover {
+    @apply transition-colors hover:border-border hover:bg-secondary/40;
+  }
+
+  /* Thin scrollbars inside panels */
+  .scroll-slim {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .scroll-slim::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scroll-slim::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 999px;
+  }
+  .scroll-slim::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer utilities {
+  @keyframes fade-rise {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-rise {
+    animation: fade-rise 0.8s ease-out both;
+  }
+
+  .animate-fade-rise-delay {
+    animation: fade-rise 0.8s ease-out 0.2s both;
+  }
+
+  .animate-fade-rise-delay-2 {
+    animation: fade-rise 0.8s ease-out 0.4s both;
+  }
+
+  .animate-fade-rise-delay-3 {
+    animation: fade-rise 0.8s ease-out 0.6s both;
+  }
+
+  .text-gradient-violet {
+    background: linear-gradient(
+      120deg,
+      hsl(var(--foreground)) 0%,
+      hsl(var(--primary)) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
