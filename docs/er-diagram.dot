@@ -1,0 +1,193 @@
+// O(1) ICPC tracker — Chen-notation ER diagram.
+// Render:  dot -Tpng -Gdpi=150 -Gratio=0.75 er-diagram.dot -o er-diagram.png
+//
+// Legend
+//   box                 entity           box, double border   weak entity
+//   diamond             relationship     diamond, double      identifying relationship
+//   ellipse             attribute        underlined           primary key
+//   ellipse, double     multivalued      ellipse, dashed      derived attribute
+//   edge label 1/N/M    cardinality      double edge          total participation
+
+digraph ER {
+  graph [rankdir=TB, splines=true, overlap=false, nodesep=0.35, ranksep=0.55,
+         fontname="Liberation Serif", fontsize=11, pad=0.3]
+  node  [fontname="Liberation Serif", fontsize=13]
+  edge  [fontname="Liberation Serif", fontsize=14, arrowhead=none]
+
+  // ----------------------------------------------------------- entities
+  node [shape=box, style="filled", fillcolor="#eef0ff", penwidth=1.2]
+  University; User; Topic; Problem; Contest; Submission; Sheet; Team; Resource; CalendarEvent
+  node [peripheries=2] JudgeAccount
+
+  // ----------------------------------------------------------- relationships
+  node [shape=diamond, style="filled", fillcolor="#fff5dd", peripheries=1, height=0.6]
+  studies_at; coaches; based_at; authors; adds; schedules; belongs_to;
+  tagged; includes; submits; on_problem; during; participates; contains;
+  assigned; completes; archives; covers; bookmarks; reminds
+  node [peripheries=2] links
+
+  // ----------------------------------------------------------- attributes
+  node [shape=ellipse, style="", fillcolor="", peripheries=1, height=0.3, fontsize=11]
+
+  // University
+  u_id   [label=<<u>univ_id</u>>]; u_name [label="name"]; u_country [label="country"]
+  University -> {u_id u_name u_country}
+
+  // User
+  us_id [label=<<u>user_id</u>>]; us_name [label="name"]; us_email [label="email"]
+  us_role [label="role"]; us_year [label="year_of_study"]; us_pw [label="password_hash"]
+  User -> {us_id us_name us_email us_role us_year us_pw}
+
+  // JudgeAccount (weak: identified by owner + platform)
+  ja_plat [label=<<u>platform</u>>]; ja_handle [label="handle"]; ja_rating [label="rating"]
+  ja_ver [label="verified_at"]
+  JudgeAccount -> {ja_plat ja_handle ja_rating ja_ver}
+
+  // Topic
+  t_id [label=<<u>topic_id</u>>]; t_name [label="name"]
+  Topic -> {t_id t_name}
+
+  // Problem
+  p_id [label=<<u>problem_id</u>>]; p_plat [label="platform"]; p_code [label="external_code"]
+  p_title [label="title"]; p_rating [label="rating"]; p_url [label="url"]
+  p_diff [label="difficulty", style=dashed]
+  Problem -> {p_id p_plat p_code p_title p_rating p_url p_diff}
+
+  // Contest
+  c_id [label=<<u>contest_id</u>>]; c_name [label="name"]; c_kind [label="kind"]
+  c_start [label="starts_at"]; c_dur [label="duration_min"]; c_ext [label="external_id"]
+  c_status [label="status", style=dashed]
+  Contest -> {c_id c_name c_kind c_start c_dur c_ext c_status}
+
+  // Submission
+  s_id [label=<<u>submission_id</u>>]; s_verdict [label="verdict"]; s_lang [label="language"]
+  s_time [label="submitted_at"]
+  Submission -> {s_id s_verdict s_lang s_time}
+
+  // Sheet
+  sh_id [label=<<u>sheet_id</u>>]; sh_title [label="title"]; sh_desc [label="description"]
+  sh_deadline [label="deadline"]; sh_level [label="level"]; sh_created [label="created_at"]
+  Sheet -> {sh_id sh_title sh_desc sh_deadline sh_level sh_created}
+
+  // Team
+  tm_id [label=<<u>team_id</u>>]; tm_name [label="name"]; tm_code [label="invite_code"]
+  tm_created [label="created_at"]
+  Team -> {tm_id tm_name tm_code tm_created}
+
+  // Resource
+  r_id [label=<<u>resource_id</u>>]; r_title [label="title"]; r_type [label="type"]
+  r_url [label="url"]; r_level [label="level"]; r_dur [label="duration_min"]
+  Resource -> {r_id r_title r_type r_url r_level r_dur}
+
+  // CalendarEvent
+  ce_id [label=<<u>event_id</u>>]; ce_title [label="title"]; ce_kind [label="kind"]
+  ce_start [label="starts_at"]; ce_dur [label="duration_min"]
+  CalendarEvent -> {ce_id ce_title ce_kind ce_start ce_dur}
+
+  // Relationship attributes
+  inc_label [label="label"]
+  includes -> inc_label
+  pa_old [label="old_rating"]; pa_new [label="new_rating"]; pa_rank [label="rank"]
+  participates -> {pa_old pa_new pa_rank}
+  con_pos [label="position"]
+  contains -> con_pos
+  asg_at [label="assigned_at"]
+  assigned -> asg_at
+  cmp_at [label="completed_at"]
+  completes -> cmp_at
+  mem_role [label="member_role"]; mem_join [label="joined_at"]
+  belongs_to -> {mem_role mem_join}
+  bm_at [label="bookmarked_at"]
+  bookmarks -> bm_at
+  rem_min [label="minutes_before"]
+  reminds -> rem_min
+
+  // ----------------------------------------------------------- edges
+  // Double edge (color=black:invis:black) marks total participation.
+  edge [fontsize=14, fontcolor="#7a1f1f"]
+
+  // User studies_at University        N : 1, User total
+  User -> studies_at        [label="N", color="black:invis:black"]
+  studies_at -> University  [label="1"]
+
+  // Team based_at University          N : 1, Team total
+  Team -> based_at          [label="N", color="black:invis:black"]
+  based_at -> University    [label="1"]
+
+  // User (mentor) coaches Team        1 : N, Team total
+  User -> coaches           [label="1"]
+  coaches -> Team           [label="N", color="black:invis:black"]
+
+  // User belongs_to Team              N : 1  (a user is in at most one team, max 3 per team)
+  User -> belongs_to        [label="N"]
+  belongs_to -> Team        [label="1"]
+
+  // User links JudgeAccount           1 : N, identifying, JudgeAccount total
+  User -> links             [label="1"]
+  links -> JudgeAccount     [label="N", color="black:invis:black"]
+
+  // Problem tagged Topic              M : N
+  Problem -> tagged         [label="M"]
+  tagged -> Topic           [label="N"]
+
+  // Contest includes Problem          M : N, Contest total
+  Contest -> includes       [label="M", color="black:invis:black"]
+  includes -> Problem       [label="N"]
+
+  // User submits Submission           1 : N, Submission total
+  User -> submits           [label="1"]
+  submits -> Submission     [label="N", color="black:invis:black"]
+
+  // Submission on_problem Problem     N : 1, Submission total
+  Submission -> on_problem  [label="N", color="black:invis:black"]
+  on_problem -> Problem     [label="1"]
+
+  // Submission during Contest         N : 1, partial (practice solves have no contest)
+  Submission -> during      [label="N"]
+  during -> Contest         [label="1"]
+
+  // User participates Contest         M : N (rated rounds only)
+  User -> participates      [label="M"]
+  participates -> Contest   [label="N"]
+
+  // User (mentor) authors Sheet       1 : N, Sheet total
+  User -> authors           [label="1"]
+  authors -> Sheet          [label="N", color="black:invis:black"]
+
+  // Sheet contains Problem            M : N, Sheet total
+  Sheet -> contains         [label="M", color="black:invis:black"]
+  contains -> Problem       [label="N"]
+
+  // Sheet assigned User               M : N
+  Sheet -> assigned         [label="M"]
+  assigned -> User          [label="N"]
+
+  // completes: ternary User–Sheet–Problem
+  User -> completes         [label="N"]
+  Sheet -> completes        [label="N"]
+  completes -> Problem      [label="N"]
+
+  // Sheet archives Contest            N : 1, partial (only past-ICPC sheets)
+  Sheet -> archives         [label="N"]
+  archives -> Contest       [label="1"]
+
+  // Resource covers Topic             N : 1, Resource total
+  Resource -> covers        [label="N", color="black:invis:black"]
+  covers -> Topic           [label="1"]
+
+  // User adds Resource                1 : N, Resource total
+  User -> adds              [label="1"]
+  adds -> Resource          [label="N", color="black:invis:black"]
+
+  // User bookmarks Resource           M : N
+  User -> bookmarks         [label="M"]
+  bookmarks -> Resource     [label="N"]
+
+  // Team schedules CalendarEvent      1 : N, partial (personal events have no team)
+  Team -> schedules         [label="1"]
+  schedules -> CalendarEvent [label="N"]
+
+  // User reminds CalendarEvent        M : N
+  User -> reminds           [label="M"]
+  reminds -> CalendarEvent  [label="N"]
+}

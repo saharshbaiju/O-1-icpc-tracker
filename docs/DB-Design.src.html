@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>O(1) — Database Design Document</title>
+<style>
+  @page { size: A4; margin: 2cm 2cm 2cm 2.2cm; }
+  body { font-family: "Liberation Serif", "Times New Roman", serif; font-size: 12pt; line-height: 1.35; color: #000; }
+  h1 { font-size: 15pt; text-align: center; margin: 0; }
+  h2 { font-size: 13pt; margin: 22pt 0 6pt; }
+  h3 { font-size: 12pt; margin: 14pt 0 4pt; }
+  h4 { font-size: 12pt; font-style: italic; font-weight: normal; margin: 10pt 0 2pt; }
+  p  { margin: 0 0 7pt; text-align: justify; }
+  .hdr { text-align: center; font-weight: bold; font-size: 13pt; }
+  .hdr p { margin: 0; text-align: center; }
+  .title { text-align: center; font-weight: bold; text-decoration: underline; font-size: 13pt; margin: 18pt 0 12pt; }
+  table { border-collapse: collapse; margin: 6pt 0 10pt; width: 100%; }
+  th, td { border: 1px solid #000; padding: 3pt 5pt; vertical-align: top; font-size: 10.5pt; }
+  th { background: #d9d9d9; text-align: left; }
+  table.plain td, table.plain th { border: none; padding: 1pt 8pt 1pt 0; font-size: 12pt; }
+  table.members { width: 60%; margin-left: 100pt; }
+  table.members th, table.members td { font-size: 12pt; }
+  .rel { font-family: "Liberation Mono", monospace; font-size: 10pt; margin: 2pt 0 2pt 18pt; }
+  .rel u { text-decoration: underline; }
+  .fk { font-style: italic; }
+  pre, code { font-family: "Liberation Mono", "Courier New", monospace; }
+  pre { font-size: 8pt; margin: 0; padding: 0; }
+  code { font-size: 10pt; }
+  .fd { font-family: "Liberation Mono", monospace; font-size: 10.5pt; }
+  .note { border-left: 3px solid #888; padding: 2pt 8pt; margin: 6pt 0; background: #f4f4f4; }
+  .brk { page-break-before: always; }
+  figure { margin: 8pt 0; text-align: center; }
+  figcaption { font-size: 10.5pt; font-style: italic; margin-top: 4pt; }
+  ul, ol { margin: 2pt 0 8pt; }
+  li { margin-bottom: 2pt; }
+  .small { font-size: 10.5pt; }
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <p>23CSE202 DATABASE MANAGEMENT SYSTEMS</p>
+  <p>S3 B.Tech CSE</p>
+  <p>Department of Computer Science and Engineering</p>
+  <p>Amrita School of Computing, Amritapuri Campus</p>
+</div>
+
+<p class="title">3. Database Design Document</p>
+
+<table class="plain">
+  <tr><td style="width:110pt">Group No</td><td>: ______</td></tr>
+  <tr><td>Team Members</td><td>:</td></tr>
+</table>
+<table class="members" border="1" cellspacing="0" cellpadding="4">
+  <tr><th>Roll No</th><th>Student Name</th></tr>
+  <tr><td>AM.SC.U4CSE25245</td><td>Saharsh Baiju</td></tr>
+  <tr><td>&nbsp;</td><td>&nbsp;</td></tr>
+  <tr><td>&nbsp;</td><td>&nbsp;</td></tr>
+  <tr><td>&nbsp;</td><td>&nbsp;</td></tr>
+</table>
+
+<table class="plain">
+  <tr><td style="width:110pt">Project Title</td><td>: <b>O(1)</b> — an ICPC preparation tracker for competitive-programming teams and their mentors</td></tr>
+</table>
+
+<!-- ===================================================================== 3.1 -->
+<h2>3.1. Detailed description of the project</h2>
+
+<p>
+Competitive-programming teams preparing for the ICPC train across several websites at
+once: they solve problems on Codeforces, follow topic ladders a coach hands out, run
+past regional problem sets as timed practice, and keep a spreadsheet of who has solved
+what. Nothing joins these together, so a mentor cannot see at a glance which student is
+behind on which topic, and a student cannot see what to work on next. O(1) is a web
+application that gives a college's ICPC teams one place to practise, be assigned work
+by a mentor, and measure progress against each other.
+</p>
+
+<h3>Users</h3>
+<p>The system has two kinds of user, and a person holds exactly one role:</p>
+<ul>
+  <li><b>Student</b>: a contestant. Links a judge account, works through assigned practice
+      sheets, belongs to at most one team, and views their own analytics, the team's
+      combined coverage, and the leaderboard.</li>
+  <li><b>Mentor</b>: a faculty member or senior who coaches. Everything a student can do,
+      plus authoring practice sheets, assigning them to students, coaching teams, and
+      adding learning resources.</li>
+</ul>
+
+<h3>Entities and what the system records about them</h3>
+<ul>
+  <li><b>University.</b> Every user and every team belongs to one university. Leaderboards
+      can be filtered by university.</li>
+  <li><b>User.</b> Name, unique e-mail, password hash, role, year of study, university,
+      join date, short bio and avatar.</li>
+  <li><b>Judge account.</b> A user's handle on an online judge (initially Codeforces; the
+      design allows AtCoder later). A user has at most one account per platform, a
+      handle is unique within a platform, and the account carries the judge-side rating
+      and the time the handle was verified. It cannot exist without its owner.</li>
+  <li><b>Problem.</b> A problem hosted on a judge (identified there by a platform-specific
+      code such as <code>1234C</code>) or a manually added link. It has a title, a
+      numeric rating, a URL, and a flag for whether an editorial exists. A problem is
+      tagged with any number of <b>topics</b> (Graphs, Dynamic Programming, Flows, …).</li>
+  <li><b>Contest.</b> A rated round, a past-ICPC set mirrored in the Codeforces Gym, or a
+      practice set. It has a name, kind, start time and duration, and includes an
+      ordered set of problems labelled A, B, C, ….</li>
+  <li><b>Submission.</b> One attempt by a user at a problem, pulled from the judge by a
+      periodic sync job: verdict, language, timestamp, and the judge's own submission
+      id. A submission made during a contest is linked to that contest; a practice
+      submission is not.</li>
+  <li><b>Participation.</b> A user's result in a rated contest: old rating, new rating
+      and rank. This is the source of the rating-history chart.</li>
+  <li><b>Practice sheet.</b> A mentor-authored, ordered list of problems with a level, a
+      description and an optional deadline. A sheet may instead point at a past-ICPC
+      contest, in which case its problems are that contest's problems. Sheets are
+      assigned to students; a student's progress is the set of sheet problems they have
+      solved (detected automatically from submissions) or ticked off by hand (for
+      problems the sync cannot see).</li>
+  <li><b>Team.</b> An ICPC squad of at most three students from one university, coached
+      by a mentor, with an invite code that lets a student join.</li>
+  <li><b>Learning resource.</b> An article, video, notes, roadmap, tutorial or book for
+      one topic and level, added by a mentor. Users can bookmark resources.</li>
+  <li><b>Calendar event.</b> A practice session, team meeting or announcement, either
+      personal or belonging to a team. Users may set a reminder on an event. Contest
+      dates and sheet deadlines also appear on the calendar but are not stored as
+      events, because they are already recorded on the contest and sheet.</li>
+</ul>
+
+<h3>Business rules</h3>
+<ol>
+  <li>A user has exactly one role (student or mentor) and belongs to exactly one university.</li>
+  <li>A user has at most one judge account per platform; a handle is unique on its platform.</li>
+  <li>A problem is uniquely identified on its platform by its external code; the same
+      problem can appear in several contests (for example a Div. 1 and Div. 2 mirror).</li>
+  <li>Within a contest every problem has a distinct label (A, B, C …).</li>
+  <li>Every submission belongs to exactly one user and one problem. Contest submissions
+      reference their contest; practice submissions do not.</li>
+  <li>A user has at most one participation record per contest.</li>
+  <li>A sheet has exactly one author, who must be a mentor. The problems in a sheet are
+      ordered, and each position is used once.</li>
+  <li>A student can be assigned a sheet only once, and can mark complete only problems that
+      belong to a sheet they are assigned.</li>
+  <li>A team has exactly one coach (a mentor), belongs to one university, and has at most
+      three members. A student is a member of at most one team.</li>
+  <li>A resource covers exactly one topic and is added by one user.</li>
+  <li>A reminder belongs to one user and one event; a user has at most one reminder per event.</li>
+  <li>Counts and statuses that can be computed (problems solved, streak, sheet progress,
+      contest status, difficulty band, leaderboard rank) are never stored; they are
+      derived by queries so that they cannot become stale.</li>
+</ol>
+
+<!-- ===================================================================== 3.2 -->
+<h2 class="brk">3.2. ER Diagram</h2>
+
+<p>
+The diagrams use Chen notation. Rectangles are entities (a double border marks the weak
+entity <i>JudgeAccount</i>); diamonds are relationships (double border for the identifying
+relationship <i>links</i>); ellipses are attributes, with primary-key attributes underlined
+and derived attributes dashed. Cardinality is written on the edges as 1, N or M, and a
+double line marks total participation. To keep the figure legible, only the principal
+attributes of each entity are drawn; the complete attribute list is in the tables that
+follow and in the relational schema in §3.3.
+</p>
+
+<figure>
+  <img src="data:image/png;base64,{{ER_OVERVIEW_B64}}" alt="ER overview" width="600" height="325">
+  <figcaption>Figure 1 — Entities and relationships of O(1) with cardinality and participation (attributes omitted for legibility). Source: <code>docs/er-overview.dot</code>.</figcaption>
+</figure>
+
+<p>Figure 2 on the next page is the complete Chen diagram with attributes, rotated to fit the page; a zoomable copy is in <code>docs/er-diagram.svg</code>.</p>
+
+<figure class="brk">
+  <img src="data:image/png;base64,{{ER_PNG_B64}}" alt="ER diagram" width="600" height="797">
+  <figcaption>Figure 2 — Full ER diagram (Chen notation), rotated 90°. Source: <code>docs/er-diagram.dot</code>.</figcaption>
+</figure>
+
+<h3>Entity summary</h3>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:17%">Entity</th><th style="width:20%">Key</th><th>Attributes</th></tr>
+  <tr><td>University</td><td><u>univ_id</u></td><td>name, country</td></tr>
+  <tr><td>User</td><td><u>user_id</u></td><td>name, email, password_hash, role, year_of_study, joined_at, bio, avatar_url</td></tr>
+  <tr><td>JudgeAccount <i>(weak)</i></td><td><u>platform</u> (partial key) + owner</td><td>handle, rating, verified_at</td></tr>
+  <tr><td>Topic</td><td><u>topic_id</u></td><td>name</td></tr>
+  <tr><td>Problem</td><td><u>problem_id</u></td><td>platform, external_code, title, rating, url, has_editorial, <i>difficulty (derived from rating)</i></td></tr>
+  <tr><td>Contest</td><td><u>contest_id</u></td><td>platform, external_id, name, kind, starts_at, duration_min, <i>status (derived from clock)</i></td></tr>
+  <tr><td>Submission</td><td><u>submission_id</u></td><td>verdict, language, submitted_at, platform, external_submission_id</td></tr>
+  <tr><td>Sheet</td><td><u>sheet_id</u></td><td>title, description, level, deadline, created_at</td></tr>
+  <tr><td>Team</td><td><u>team_id</u></td><td>name, invite_code, created_at</td></tr>
+  <tr><td>Resource</td><td><u>resource_id</u></td><td>title, type, url, level, duration_min</td></tr>
+  <tr><td>CalendarEvent</td><td><u>event_id</u></td><td>title, kind, starts_at, duration_min</td></tr>
+</table>
+
+<h3>Relationship summary</h3>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:14%">Relationship</th><th style="width:26%">Entities</th><th style="width:11%">Cardinality</th><th style="width:22%">Participation</th><th>Attributes / rule</th></tr>
+  <tr><td>studies_at</td><td>User – University</td><td>N : 1</td><td>User total, University partial</td><td>—</td></tr>
+  <tr><td>based_at</td><td>Team – University</td><td>N : 1</td><td>Team total</td><td>—</td></tr>
+  <tr><td>coaches</td><td>User (mentor) – Team</td><td>1 : N</td><td>Team total</td><td>coach must have role = mentor</td></tr>
+  <tr><td>belongs_to</td><td>User – Team</td><td>N : 1</td><td>both partial</td><td>member_role, joined_at; ≤ 3 members per team</td></tr>
+  <tr><td>links <i>(identifying)</i></td><td>User – JudgeAccount</td><td>1 : N</td><td>JudgeAccount total</td><td>—</td></tr>
+  <tr><td>tagged</td><td>Problem – Topic</td><td>M : N</td><td>both partial</td><td>—</td></tr>
+  <tr><td>includes</td><td>Contest – Problem</td><td>M : N</td><td>Contest total</td><td>label, unique within contest</td></tr>
+  <tr><td>submits</td><td>User – Submission</td><td>1 : N</td><td>Submission total</td><td>—</td></tr>
+  <tr><td>on_problem</td><td>Submission – Problem</td><td>N : 1</td><td>Submission total</td><td>—</td></tr>
+  <tr><td>during</td><td>Submission – Contest</td><td>N : 1</td><td>both partial</td><td>absent for practice submissions</td></tr>
+  <tr><td>participates</td><td>User – Contest</td><td>M : N</td><td>both partial</td><td>old_rating, new_rating, rank</td></tr>
+  <tr><td>authors</td><td>User (mentor) – Sheet</td><td>1 : N</td><td>Sheet total</td><td>—</td></tr>
+  <tr><td>contains</td><td>Sheet – Problem</td><td>M : N</td><td>Sheet total</td><td>position, unique within sheet</td></tr>
+  <tr><td>assigned</td><td>Sheet – User</td><td>M : N</td><td>both partial</td><td>assigned_at</td></tr>
+  <tr><td>completes <i>(ternary)</i></td><td>User – Sheet – Problem</td><td>N : N : N</td><td>all partial</td><td>completed_at; only for assigned sheet problems</td></tr>
+  <tr><td>archives</td><td>Sheet – Contest</td><td>N : 1</td><td>both partial</td><td>set only for past-ICPC sheets</td></tr>
+  <tr><td>covers</td><td>Resource – Topic</td><td>N : 1</td><td>Resource total</td><td>—</td></tr>
+  <tr><td>adds</td><td>User – Resource</td><td>1 : N</td><td>Resource total</td><td>—</td></tr>
+  <tr><td>bookmarks</td><td>User – Resource</td><td>M : N</td><td>both partial</td><td>bookmarked_at</td></tr>
+  <tr><td>schedules</td><td>Team – CalendarEvent</td><td>1 : N</td><td>both partial</td><td>absent for personal events</td></tr>
+  <tr><td>reminds</td><td>User – CalendarEvent</td><td>M : N</td><td>both partial</td><td>minutes_before</td></tr>
+</table>
+
+<!-- ===================================================================== 3.3 -->
+<h2 class="brk">3.3. Relational Schema</h2>
+
+<p>The ER model is mapped to relations with the standard rules:</p>
+<ul>
+  <li><b>Strong entity</b> → one relation with the entity's key as primary key.</li>
+  <li><b>Weak entity</b> (JudgeAccount) → a relation whose primary key is the owner's key plus the partial key.</li>
+  <li><b>1 : N relationship</b> → the key of the "1" side becomes a foreign key on the "N" side
+      (studies_at, based_at, coaches, on_problem, submits, during, authors, archives, covers, adds, schedules).
+      Where participation of the N side is partial the foreign key is nullable (during, archives, schedules).</li>
+  <li><b>N : 1 relationship with attributes</b> whose N side has at most one instance (belongs_to)
+      → a separate relation keyed by the N side, because a user's membership row is optional
+      and carries its own attributes.</li>
+  <li><b>M : N relationship</b> → a junction relation whose primary key is the union of the two
+      keys, plus the relationship's attributes (tagged, includes, participates, contains,
+      assigned, bookmarks, reminds).</li>
+  <li><b>Ternary relationship</b> (completes) → a relation keyed by all three participating keys.</li>
+  <li><b>Derived attributes</b> (difficulty, status) are not stored; they are views (§3.5).</li>
+</ul>
+
+<p>Primary keys are underlined; foreign keys are marked with → and the relation they reference.</p>
+
+<h4>People and lookups</h4>
+<p class="rel">University(<u>univ_id</u>, name, country)</p>
+<p class="rel">Topic(<u>topic_id</u>, name)</p>
+<p class="rel">User(<u>user_id</u>, name, email, password_hash, role, year_of_study, univ_id → University, joined_at, bio, avatar_url)</p>
+<p class="rel">JudgeAccount(<u>user_id</u> → User, <u>platform</u>, handle, rating, verified_at)</p>
+
+<h4>Problems and contests</h4>
+<p class="rel">Problem(<u>problem_id</u>, platform, external_code, title, rating, url, has_editorial)</p>
+<p class="rel">ProblemTopic(<u>problem_id</u> → Problem, <u>topic_id</u> → Topic)</p>
+<p class="rel">Contest(<u>contest_id</u>, platform, external_id, name, kind, starts_at, duration_min)</p>
+<p class="rel">ContestProblem(<u>contest_id</u> → Contest, <u>problem_id</u> → Problem, label)</p>
+<p class="rel">Submission(<u>submission_id</u>, user_id → User, problem_id → Problem, contest_id → Contest <i>[null]</i>, verdict, language, submitted_at, platform, external_submission_id)</p>
+<p class="rel">Participation(<u>user_id</u> → User, <u>contest_id</u> → Contest, old_rating, new_rating, rank)</p>
+
+<h4>Practice sheets</h4>
+<p class="rel">Sheet(<u>sheet_id</u>, title, description, author_id → User, level, deadline, created_at, archive_contest_id → Contest <i>[null]</i>)</p>
+<p class="rel">SheetProblem(<u>sheet_id</u> → Sheet, <u>problem_id</u> → Problem, position)</p>
+<p class="rel">SheetAssignment(<u>sheet_id</u> → Sheet, <u>user_id</u> → User, assigned_at)</p>
+<p class="rel">SheetCompletion(<u>sheet_id</u>, <u>user_id</u>, <u>problem_id</u>, completed_at)&nbsp;&nbsp;
+  <span class="fk">(sheet_id, problem_id) → SheetProblem; (sheet_id, user_id) → SheetAssignment</span></p>
+
+<h4>Teams</h4>
+<p class="rel">Team(<u>team_id</u>, name, univ_id → University, coach_id → User, invite_code, created_at)</p>
+<p class="rel">TeamMember(<u>user_id</u> → User, team_id → Team, member_role, joined_at)</p>
+
+<h4>Resources and calendar</h4>
+<p class="rel">Resource(<u>resource_id</u>, title, type, url, topic_id → Topic, level, duration_min, added_by → User)</p>
+<p class="rel">Bookmark(<u>user_id</u> → User, <u>resource_id</u> → Resource, bookmarked_at)</p>
+<p class="rel">CalendarEvent(<u>event_id</u>, title, kind, starts_at, duration_min, team_id → Team <i>[null]</i>, created_by → User)</p>
+<p class="rel">Reminder(<u>user_id</u> → User, <u>event_id</u> → CalendarEvent, minutes_before)</p>
+
+<h3>Additional constraints</h3>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:22%">Relation</th><th>Constraint</th><th style="width:22%">Enforces rule</th></tr>
+  <tr><td>User</td><td>UNIQUE(email); role ∈ {student, mentor}</td><td>1</td></tr>
+  <tr><td>JudgeAccount</td><td>UNIQUE(platform, handle)</td><td>2</td></tr>
+  <tr><td>Problem</td><td>UNIQUE(platform, external_code); 800 ≤ rating ≤ 3500</td><td>3</td></tr>
+  <tr><td>Contest</td><td>UNIQUE(platform, external_id); kind ∈ {rated, gym, practice}</td><td>—</td></tr>
+  <tr><td>ContestProblem</td><td>UNIQUE(contest_id, label)</td><td>4</td></tr>
+  <tr><td>Submission</td><td>UNIQUE(platform, external_submission_id)</td><td>5 (idempotent sync)</td></tr>
+  <tr><td>Sheet</td><td>author_id must reference a user with role = mentor (trigger)</td><td>7</td></tr>
+  <tr><td>SheetProblem</td><td>UNIQUE(sheet_id, position)</td><td>7</td></tr>
+  <tr><td>SheetCompletion</td><td>composite FKs to SheetProblem and SheetAssignment</td><td>8</td></tr>
+  <tr><td>Team</td><td>UNIQUE(invite_code); UNIQUE(univ_id, name); coach role = mentor (trigger)</td><td>9</td></tr>
+  <tr><td>TeamMember</td><td>PRIMARY KEY(user_id); trigger rejects a fourth member</td><td>9</td></tr>
+  <tr><td>Resource</td><td>UNIQUE(url); type ∈ {Article, Video, Notes, Roadmap, Tutorial, Book}</td><td>10</td></tr>
+</table>
+
+<!-- ===================================================================== 3.4 -->
+<h2 class="brk">3.4. Normalization and Functional Dependency Analysis</h2>
+
+<h3>3.4.1 Functional dependencies</h3>
+<p>
+The FDs below are the ones that hold because of the business rules in §3.1. Trivial
+dependencies are omitted. Attributes are abbreviated where the meaning is obvious.
+</p>
+
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:20%">Relation</th><th>Functional dependencies</th><th style="width:26%">Meaning</th></tr>
+  <tr><td>University</td><td class="fd">univ_id → name, country<br>name → univ_id</td><td>university names are unique</td></tr>
+  <tr><td>Topic</td><td class="fd">topic_id → name<br>name → topic_id</td><td>topic names are unique</td></tr>
+  <tr><td>User</td><td class="fd">user_id → name, email, password_hash, role, year, univ_id, joined_at, bio, avatar_url<br>email → user_id</td><td>e-mail is the login and is unique (rule 1)</td></tr>
+  <tr><td>JudgeAccount</td><td class="fd">user_id, platform → handle, rating, verified_at<br>platform, handle → user_id</td><td>one account per platform per user; handle unique per platform (rule 2)</td></tr>
+  <tr><td>Problem</td><td class="fd">problem_id → platform, external_code, title, rating, url, has_editorial<br>platform, external_code → problem_id</td><td>a judge identifies a problem by its code (rule 3)</td></tr>
+  <tr><td>ProblemTopic</td><td class="fd">none beyond the key</td><td>all-key relation</td></tr>
+  <tr><td>Contest</td><td class="fd">contest_id → platform, external_id, name, kind, starts_at, duration_min<br>platform, external_id → contest_id</td><td>judge's contest id is unique per platform</td></tr>
+  <tr><td>ContestProblem</td><td class="fd">contest_id, problem_id → label<br>contest_id, label → problem_id</td><td>labels are unique within a contest (rule 4)</td></tr>
+  <tr><td>Submission</td><td class="fd">submission_id → user_id, problem_id, contest_id, verdict, language, submitted_at, platform, ext_sub_id<br>platform, ext_sub_id → submission_id</td><td>judge's submission id is unique per platform (rule 5)</td></tr>
+  <tr><td>Participation</td><td class="fd">user_id, contest_id → old_rating, new_rating, rank</td><td>one result per user per contest (rule 6)</td></tr>
+  <tr><td>Sheet</td><td class="fd">sheet_id → title, description, author_id, level, deadline, created_at, archive_contest_id</td><td>rule 7</td></tr>
+  <tr><td>SheetProblem</td><td class="fd">sheet_id, problem_id → position<br>sheet_id, position → problem_id</td><td>each position used once (rule 7)</td></tr>
+  <tr><td>SheetAssignment</td><td class="fd">sheet_id, user_id → assigned_at</td><td>rule 8</td></tr>
+  <tr><td>SheetCompletion</td><td class="fd">sheet_id, user_id, problem_id → completed_at</td><td>rule 8</td></tr>
+  <tr><td>Team</td><td class="fd">team_id → name, univ_id, coach_id, invite_code, created_at<br>invite_code → team_id<br>univ_id, name → team_id</td><td>invite code unique; team name unique within a university (rule 9)</td></tr>
+  <tr><td>TeamMember</td><td class="fd">user_id → team_id, member_role, joined_at</td><td>a student is in at most one team (rule 9)</td></tr>
+  <tr><td>Resource</td><td class="fd">resource_id → title, type, url, topic_id, level, duration_min, added_by<br>url → resource_id</td><td>rule 10</td></tr>
+  <tr><td>Bookmark</td><td class="fd">user_id, resource_id → bookmarked_at</td><td>—</td></tr>
+  <tr><td>CalendarEvent</td><td class="fd">event_id → title, kind, starts_at, duration_min, team_id, created_by</td><td>—</td></tr>
+  <tr><td>Reminder</td><td class="fd">user_id, event_id → minutes_before</td><td>one reminder per user per event (rule 11)</td></tr>
+</table>
+
+<p class="note small">
+<b>Why the FDs matter.</b> Each non-trivial FD is either a primary-key dependency or a
+uniqueness rule from §3.1. The second kind (email → user_id, (platform, handle) → user_id,
+(platform, external_code) → problem_id, (contest_id, label) → problem_id,
+(sheet_id, position) → problem_id, invite_code → team_id, url → resource_id) tells us
+each of those relations has more than one candidate key. That is exactly the situation
+in which 3NF and BCNF can differ, so those relations are checked most carefully in
+§3.4.4. Dependencies that are deliberately <i>absent</i> also matter: rating does not
+determine a stored difficulty, and a problem does not determine a contest, because a
+problem can be shared by two contests (rule 3). Both would otherwise have created
+redundancy.
+</p>
+
+<h3>3.4.2 Candidate keys by attribute closure</h3>
+<p>
+For each relation the candidate keys are the minimal attribute sets whose closure under
+the FDs is the whole relation. The closures below are computed for the relations where
+the answer is not immediate.
+</p>
+
+<h4>Problem</h4>
+<p>R = {problem_id, platform, external_code, title, rating, url, has_editorial}.</p>
+<ul class="fd">
+  <li>{problem_id}<sup>+</sup> = {problem_id} ∪ {platform, external_code, title, rating, url, has_editorial} = R &nbsp;→ candidate key.</li>
+  <li>{platform, external_code}<sup>+</sup> = {platform, external_code, problem_id} → then apply problem_id → … = R &nbsp;→ candidate key.</li>
+  <li>{platform}<sup>+</sup> = {platform}; {external_code}<sup>+</sup> = {external_code}; {rating}<sup>+</sup> = {rating} &nbsp;→ not keys, so both keys above are minimal.</li>
+</ul>
+<p>Candidate keys: {problem_id}, {platform, external_code}. Primary key: problem_id (shorter, stable if a judge renames a code). Prime attributes: problem_id, platform, external_code.</p>
+
+<h4>JudgeAccount</h4>
+<p>R = {user_id, platform, handle, rating, verified_at}.</p>
+<ul class="fd">
+  <li>{user_id, platform}<sup>+</sup> = {user_id, platform, handle, rating, verified_at} = R &nbsp;→ candidate key.</li>
+  <li>{platform, handle}<sup>+</sup> = {platform, handle, user_id} → {user_id, platform} → R &nbsp;→ candidate key.</li>
+  <li>{user_id}<sup>+</sup> = {user_id}; {handle}<sup>+</sup> = {handle} &nbsp;→ neither key is reducible.</li>
+</ul>
+<p>Candidate keys: {user_id, platform}, {platform, handle}. Primary key: (user_id, platform), because it is the identifying relationship of the weak entity. All attributes except rating and verified_at are prime.</p>
+
+<h4>Submission</h4>
+<p>R = {submission_id, user_id, problem_id, contest_id, verdict, language, submitted_at, platform, ext_sub_id}.</p>
+<ul class="fd">
+  <li>{submission_id}<sup>+</sup> = R &nbsp;→ candidate key.</li>
+  <li>{platform, ext_sub_id}<sup>+</sup> = {platform, ext_sub_id, submission_id} → R &nbsp;→ candidate key.</li>
+  <li>{user_id, problem_id, submitted_at}<sup>+</sup> = {user_id, problem_id, submitted_at}. A user can submit the same problem twice in one second, so this is <i>not</i> a key, which is why the surrogate id is needed.</li>
+</ul>
+<p>Candidate keys: {submission_id}, {platform, ext_sub_id}. Primary key: submission_id.</p>
+
+<h4>TeamMember</h4>
+<p>R = {user_id, team_id, member_role, joined_at}.</p>
+<ul class="fd">
+  <li>{user_id}<sup>+</sup> = {user_id, team_id, member_role, joined_at} = R &nbsp;→ candidate key.</li>
+  <li>{team_id, user_id}<sup>+</sup> = R, but it contains the key {user_id}, so it is a superkey, not a candidate key.</li>
+  <li>{team_id}<sup>+</sup> = {team_id}; {team_id, member_role}<sup>+</sup> = {team_id, member_role} &nbsp;→ not keys (two members of a team may share a role label).</li>
+</ul>
+<p>Candidate key: {user_id}. This is why the relation is keyed by user_id alone rather than by (team_id, user_id), which the M : N mapping rule would have produced for a relationship without the "one team per student" rule.</p>
+
+<h4>ContestProblem and SheetProblem</h4>
+<p>Both have the same shape, R = {X, Y, Z} with X,Y → Z and X,Z → Y.</p>
+<ul class="fd">
+  <li>{contest_id, problem_id}<sup>+</sup> = R; {contest_id, label}<sup>+</sup> = {contest_id, label, problem_id} = R.</li>
+  <li>{contest_id}<sup>+</sup> = {contest_id}; {problem_id}<sup>+</sup> = {problem_id}; {label}<sup>+</sup> = {label}.</li>
+</ul>
+<p>Candidate keys: {contest_id, problem_id} and {contest_id, label}; likewise {sheet_id, problem_id} and {sheet_id, position}. Every attribute of these relations is prime.</p>
+
+<h4>User, Team, Resource, University, Topic, Contest</h4>
+<p>Each has a surrogate id whose closure is the whole relation, plus one natural key from a uniqueness rule (email; invite_code and (univ_id, name); url; name; name; (platform, external_id)). The closure of each natural key reaches the surrogate id in one step and then the rest of the relation, so each is a second candidate key. The surrogate is chosen as primary key in every case.</p>
+
+<h4>All-key and single-key relations</h4>
+<p>ProblemTopic has only trivial FDs, so its whole heading is the only candidate key. Participation, SheetAssignment, SheetCompletion, Bookmark, Reminder, Sheet and CalendarEvent each have exactly one non-trivial determinant, which is therefore the only candidate key.</p>
+
+<h3 class="brk">3.4.3 Normalization from 1NF to BCNF</h3>
+
+<p>
+The starting point is the way the data was actually kept before this design: the
+front-end prototype stores everything in a handful of denormalised records, and a coach
+tracks sheet progress in a spreadsheet with one row per (sheet, student, problem). Taken
+together they amount to a single universal relation for sheet tracking:
+</p>
+
+<p class="rel" style="margin-left:0">PROGRESS(sheet_id, sheet_title, deadline, mentor_id, mentor_name, mentor_email, student_id, student_name, student_email, univ_id, univ_name, team_id, team_name, coach_id, problem_id, problem_title, platform, external_code, rating, difficulty, topics, completed_at)</p>
+
+<p>A sample of the data as it would be entered (some columns omitted for width):</p>
+<table class="small" border="1" cellspacing="0" cellpadding="4">
+  <tr><th>sheet_id</th><th>sheet_title</th><th>mentor_name</th><th>student_id</th><th>student_name</th><th>team_name</th><th>problem_id</th><th>rating</th><th>difficulty</th><th>topics</th><th>completed_at</th></tr>
+  <tr><td>s-01</td><td>Graph Theory Foundations</td><td>Aarav Mehta</td><td>u-001</td><td>Saharsh Baiju</td><td>Segfault Sentinels</td><td>p-118</td><td>2100</td><td>Hard</td><td>{Trees, Data Structures}</td><td>2026-07-25</td></tr>
+  <tr><td>s-01</td><td>Graph Theory Foundations</td><td>Aarav Mehta</td><td>u-001</td><td>Saharsh Baiju</td><td>Segfault Sentinels</td><td>p-042</td><td>1700</td><td>Medium</td><td>{Graphs}</td><td>null</td></tr>
+  <tr><td>s-01</td><td>Graph Theory Foundations</td><td>Aarav Mehta</td><td>u-005</td><td>Ananya Ghosh</td><td>Segfault Sentinels</td><td>p-118</td><td>2100</td><td>Hard</td><td>{Trees, Data Structures}</td><td>2026-07-20</td></tr>
+</table>
+
+<p>The functional dependencies that hold on PROGRESS are:</p>
+<ul class="fd">
+  <li>F1: sheet_id → sheet_title, deadline, mentor_id</li>
+  <li>F2: mentor_id → mentor_name, mentor_email</li>
+  <li>F3: student_id → student_name, student_email, univ_id, team_id</li>
+  <li>F4: univ_id → univ_name</li>
+  <li>F5: team_id → team_name, coach_id</li>
+  <li>F6: problem_id → problem_title, platform, external_code, rating</li>
+  <li>F7: platform, external_code → problem_id</li>
+  <li>F8: rating → difficulty</li>
+  <li>F9: sheet_id, student_id, problem_id → completed_at</li>
+</ul>
+<p>
+Closure: {sheet_id, student_id, problem_id}<sup>+</sup> reaches every attribute through
+F1–F9, and no proper subset does (sheet_id alone never reaches student attributes, and
+so on). So the candidate key is <b>(sheet_id, student_id, problem_id)</b> and the prime
+attributes are exactly those three, plus platform and external_code, which can
+substitute for problem_id via F7.
+</p>
+
+<h4>Unnormalised → 1NF</h4>
+<p>
+<b>Violation.</b> <code>topics</code> is multivalued: one cell holds a set. 1NF requires every
+attribute value to be atomic.
+</p>
+<p>
+<b>Fix.</b> Move the multivalued attribute into its own relation keyed by the problem and
+the topic. Repeating the PROGRESS row once per topic would also give 1NF but would
+multiply every other column by the number of topics, so the split is preferred.
+</p>
+<p class="rel">PROGRESS<sub>1</sub>(<u>sheet_id</u>, <u>student_id</u>, <u>problem_id</u>, sheet_title, deadline, mentor_id, mentor_name, mentor_email, student_name, student_email, univ_id, univ_name, team_id, team_name, coach_id, problem_title, platform, external_code, rating, difficulty, completed_at)</p>
+<p class="rel">PROBLEM_TOPIC(<u>problem_id</u>, <u>topic</u>)</p>
+
+<h4>1NF → 2NF</h4>
+<p>
+<b>Violation.</b> 2NF forbids a non-prime attribute depending on only part of a candidate
+key. F1, F3 and F6 are exactly such partial dependencies: sheet_title depends on sheet_id
+alone, student_name on student_id alone, problem_title on problem_id alone. The
+consequence is visible in the sample: "Graph Theory Foundations" and "Aarav Mehta" are
+repeated on every row of the sheet, and changing a sheet's deadline means updating one
+row per assigned student per problem (update anomaly). A sheet with no student assigned
+yet cannot be recorded at all (insertion anomaly).
+</p>
+<p><b>Fix.</b> Project each partial dependency into its own relation, keeping only the full-key dependency F9 in the original.</p>
+<p class="rel">SHEET<sub>2</sub>(<u>sheet_id</u>, sheet_title, deadline, mentor_id, mentor_name, mentor_email)</p>
+<p class="rel">STUDENT<sub>2</sub>(<u>student_id</u>, student_name, student_email, univ_id, univ_name, team_id, team_name, coach_id)</p>
+<p class="rel">PROBLEM<sub>2</sub>(<u>problem_id</u>, problem_title, platform, external_code, rating, difficulty)</p>
+<p class="rel">COMPLETION(<u>sheet_id</u>, <u>student_id</u>, <u>problem_id</u>, completed_at)</p>
+<p class="rel">PROBLEM_TOPIC(<u>problem_id</u>, <u>topic</u>)</p>
+<p>
+COMPLETION is now all-key plus one attribute that depends on the whole key, so it is in
+2NF. Note that COMPLETION still records <i>assignment</i> only implicitly: the row with
+<code>completed_at = null</code> is what says Saharsh is assigned problem p-042. That is
+resolved in the 3NF step below.
+</p>
+
+<h4>2NF → 3NF</h4>
+<p>
+<b>Violation.</b> 3NF forbids a non-prime attribute depending transitively on the key
+through another non-prime attribute. Three remain:
+</p>
+<ul>
+  <li>In SHEET<sub>2</sub>: sheet_id → mentor_id → mentor_name, mentor_email (F2). A mentor's
+      name is stored once per sheet they wrote.</li>
+  <li>In STUDENT<sub>2</sub>: student_id → univ_id → univ_name (F4) and student_id → team_id
+      → team_name, coach_id (F5). Renaming a team means editing every member's row, and a
+      team with no members yet cannot exist.</li>
+  <li>In PROBLEM<sub>2</sub>: problem_id → rating → difficulty (F8). difficulty is a pure
+      function of rating; storing it lets the two disagree.</li>
+</ul>
+<p><b>Fix.</b> Project each transitive dependency out, leaving the foreign key behind.</p>
+<p class="rel">SHEET<sub>3</sub>(<u>sheet_id</u>, sheet_title, deadline, mentor_id → MENTOR)</p>
+<p class="rel">MENTOR(<u>mentor_id</u>, mentor_name, mentor_email)</p>
+<p class="rel">STUDENT<sub>3</sub>(<u>student_id</u>, student_name, student_email, univ_id → UNIVERSITY, team_id → TEAM)</p>
+<p class="rel">UNIVERSITY(<u>univ_id</u>, univ_name)</p>
+<p class="rel">TEAM(<u>team_id</u>, team_name, coach_id → MENTOR)</p>
+<p class="rel">PROBLEM<sub>3</sub>(<u>problem_id</u>, problem_title, platform, external_code, rating)</p>
+<p class="rel">DIFFICULTY_BAND(<u>rating</u>, difficulty) &nbsp;&nbsp;<span class="fk">— or, as chosen in the final design, a view computing the band from rating</span></p>
+<p class="rel">COMPLETION(<u>sheet_id</u>, <u>student_id</u>, <u>problem_id</u>, completed_at)</p>
+<p class="rel">PROBLEM_TOPIC(<u>problem_id</u>, <u>topic</u>)</p>
+<p>
+MENTOR and STUDENT<sub>3</sub> have the same attributes apart from role, and a mentor can
+also be a contestant's coach and a team's coach, so the final design merges them into one
+<b>User</b> relation with a <code>role</code> attribute. The membership attributes are moved
+out of STUDENT into <b>TeamMember</b>, keyed by user_id, so that a user without a team
+does not need a null team_id and the membership can carry its own attributes
+(member_role, joined_at). Finally the null-valued rows of COMPLETION are replaced by an
+explicit <b>SheetAssignment</b> relation and an explicit <b>SheetProblem</b> relation, so
+that "assigned" and "in the sheet" are facts in their own right rather than implied by a
+null.
+</p>
+
+<h4>3NF → BCNF</h4>
+<p>
+BCNF requires that for <i>every</i> non-trivial FD X → Y, X is a superkey, including FDs
+whose right-hand side is a prime attribute, which 3NF lets through. The relations with
+more than one candidate key are the ones to check.
+</p>
+
+<p><b>A genuine BCNF violation in the first draft of the assignment roster.</b>
+The mentor roster page was first modelled directly from the screen, which lists, per
+student, the sheet they are on and the mentor who set it:</p>
+<p class="rel">ROSTER(student_id, sheet_id, mentor_id)</p>
+<p>with the draft rule that a mentor keeps one sheet open per student at a time. The FDs are:</p>
+<ul class="fd">
+  <li>G1: sheet_id → mentor_id &nbsp;(a sheet has one author)</li>
+  <li>G2: student_id, mentor_id → sheet_id &nbsp;(one open sheet per mentor per student)</li>
+</ul>
+<p>
+Closures: {student_id, sheet_id}<sup>+</sup> = R via G1, and {student_id, mentor_id}<sup>+</sup> = R
+via G2 then G1. Both are candidate keys, and they overlap. Every attribute is prime, so
+the relation is trivially in 3NF. But G1 has determinant sheet_id, which is not a
+superkey ({sheet_id}<sup>+</sup> = {sheet_id, mentor_id} ≠ R). ROSTER is therefore <b>not in
+BCNF</b>, and it shows the classic symptom: the author of sheet s-01 is repeated once for
+every student assigned to it, and if the last student is unassigned the sheet's author is
+lost.
+</p>
+<p><b>Decomposition</b> on the offending FD, R → (X ∪ Y) and (R − Y):</p>
+<p class="rel">SHEET_AUTHOR(<u>sheet_id</u>, mentor_id) &nbsp;&nbsp;<span class="fk">→ absorbed into Sheet.author_id</span></p>
+<p class="rel">SHEET_ASSIGNMENT(<u>student_id</u>, <u>sheet_id</u>)</p>
+<p>
+Both projections are in BCNF (each has a single candidate key that is the determinant
+of its only FD), the join is lossless because the common attribute sheet_id is a key of
+SHEET_AUTHOR, and the drafting rule G2 is no longer needed as a dependency: it can be
+imposed later by a partial unique index if mentors want it, or dropped, which is what the
+final design does.
+</p>
+
+<p><b>Relations with two candidate keys that are already in BCNF.</b> The remaining
+multi-key relations all have the property that every determinant is itself a candidate key:</p>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:20%">Relation</th><th>Determinants of its non-trivial FDs</th><th style="width:18%">Each a superkey?</th></tr>
+  <tr><td>User</td><td class="fd">{user_id}, {email}</td><td>yes → BCNF</td></tr>
+  <tr><td>JudgeAccount</td><td class="fd">{user_id, platform}, {platform, handle}</td><td>yes → BCNF</td></tr>
+  <tr><td>Problem</td><td class="fd">{problem_id}, {platform, external_code}</td><td>yes → BCNF</td></tr>
+  <tr><td>Contest</td><td class="fd">{contest_id}, {platform, external_id}</td><td>yes → BCNF</td></tr>
+  <tr><td>ContestProblem</td><td class="fd">{contest_id, problem_id}, {contest_id, label}</td><td>yes → BCNF</td></tr>
+  <tr><td>Submission</td><td class="fd">{submission_id}, {platform, ext_sub_id}</td><td>yes → BCNF</td></tr>
+  <tr><td>SheetProblem</td><td class="fd">{sheet_id, problem_id}, {sheet_id, position}</td><td>yes → BCNF</td></tr>
+  <tr><td>Team</td><td class="fd">{team_id}, {invite_code}, {univ_id, name}</td><td>yes → BCNF</td></tr>
+  <tr><td>Resource</td><td class="fd">{resource_id}, {url}</td><td>yes → BCNF</td></tr>
+  <tr><td>University, Topic</td><td class="fd">{id}, {name}</td><td>yes → BCNF</td></tr>
+</table>
+
+<p><b>Two places where a BCNF violation was avoided by design rather than by decomposition.</b></p>
+<ul>
+  <li>Submission does <i>not</i> store the contest label of the problem. Had it done so, the FD
+      (contest_id, problem_id) → label would hold inside Submission with a determinant that is
+      not a superkey. The label lives only in ContestProblem.</li>
+  <li>TeamMember does <i>not</i> store coach_id or univ_id. Had it done so, team_id → coach_id
+      would hold with team_id not a superkey. Those attributes live only in Team.</li>
+</ul>
+
+<h3>3.4.4 Final normal-form check</h3>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:20%">Relation</th><th style="width:30%">Candidate key(s)</th><th>Determinants all superkeys?</th><th style="width:10%">Form</th></tr>
+  <tr><td>University</td><td>univ_id; name</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>Topic</td><td>topic_id; name</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>User</td><td>user_id; email</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>JudgeAccount</td><td>(user_id, platform); (platform, handle)</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>Problem</td><td>problem_id; (platform, external_code)</td><td>yes; difficulty not stored</td><td>BCNF</td></tr>
+  <tr><td>ProblemTopic</td><td>(problem_id, topic_id)</td><td>no non-trivial FDs</td><td>BCNF</td></tr>
+  <tr><td>Contest</td><td>contest_id; (platform, external_id)</td><td>yes; status not stored</td><td>BCNF</td></tr>
+  <tr><td>ContestProblem</td><td>(contest_id, problem_id); (contest_id, label)</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>Submission</td><td>submission_id; (platform, ext_sub_id)</td><td>yes; label not stored</td><td>BCNF</td></tr>
+  <tr><td>Participation</td><td>(user_id, contest_id)</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>Sheet</td><td>sheet_id</td><td>yes; author details not stored</td><td>BCNF</td></tr>
+  <tr><td>SheetProblem</td><td>(sheet_id, problem_id); (sheet_id, position)</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>SheetAssignment</td><td>(sheet_id, user_id)</td><td>yes; mentor not stored</td><td>BCNF</td></tr>
+  <tr><td>SheetCompletion</td><td>(sheet_id, user_id, problem_id)</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>Team</td><td>team_id; invite_code; (univ_id, name)</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>TeamMember</td><td>user_id</td><td>yes; coach/university not stored</td><td>BCNF</td></tr>
+  <tr><td>Resource</td><td>resource_id; url</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>Bookmark</td><td>(user_id, resource_id)</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>CalendarEvent</td><td>event_id</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>Reminder</td><td>(user_id, event_id)</td><td>yes</td><td>BCNF</td></tr>
+</table>
+
+<p>
+All twenty relations are in BCNF. Every decomposition performed above was on a
+functional dependency whose left-hand side is a key of one of the resulting relations,
+so each is lossless, and since every FD in §3.4.1 can be checked within a single relation,
+the decomposition is also dependency-preserving.
+</p>
+
+<p><b>What is deliberately not a table.</b> The prototype's records carried many
+derived counters: a problem's <code>status</code> and <code>solvedBy</code>, a sheet's
+<code>total</code>, <code>completed</code> and <code>assigned</code>, a user's
+<code>solved</code>, <code>streak</code> and <code>maxRating</code>, a contest's
+<code>status</code> and <code>participants</code>, and the entire leaderboard. Each is a
+function of the base relations, so storing it would introduce an update anomaly every
+time a submission arrived. They are implemented as the views in §3.5.</p>
+
+<!-- ===================================================================== 3.5 -->
+<h2 class="brk">3.5. Appendix — SQL DDL and derived views</h2>
+<p class="small">PostgreSQL dialect. The same script is kept in the repository as <code>docs/schema.sql</code>. Table names use snake_case; <code>app_user</code> is used because <code>user</code> is a reserved word.</p>
+<pre>{{SCHEMA_SQL}}</pre>
+
+</body>
+</html>

@@ -1,0 +1,66 @@
+// O(1) — entity/relationship overview (attributes omitted; see er-diagram.dot).
+// Render:  dot -Tpng -Gdpi=150 er-overview.dot -o er-overview.png
+digraph ERO {
+  graph [rankdir=TB, splines=true, nodesep=0.45, ranksep=0.7, pad=0.2,
+         fontname="Liberation Serif"]
+  node  [fontname="Liberation Serif", fontsize=15]
+  edge  [fontname="Liberation Serif", fontsize=14, fontcolor="#7a1f1f", arrowhead=none]
+
+  node [shape=box, style=filled, fillcolor="#eef0ff", penwidth=1.3, height=0.5]
+  University; User; Topic; Problem; Contest; Submission; Sheet; Team; Resource; CalendarEvent
+  node [peripheries=2] JudgeAccount
+
+  node [shape=diamond, style=filled, fillcolor="#fff5dd", peripheries=1, fontsize=13, height=0.55]
+  studies_at; coaches; based_at; authors; adds; schedules; belongs_to;
+  tagged; includes; submits; on_problem; during; participates; contains;
+  assigned; completes; archives; covers; bookmarks; reminds
+  node [peripheries=2] links
+
+  { rank=same; University; Topic }
+  { rank=same; Team; Sheet; Resource }
+  { rank=same; Problem; Contest; CalendarEvent }
+
+  User -> studies_at        [label="N", color="black:invis:black"]
+  studies_at -> University  [label="1"]
+  Team -> based_at          [label="N", color="black:invis:black"]
+  based_at -> University    [label="1"]
+  User -> coaches           [label="1"]
+  coaches -> Team           [label="N", color="black:invis:black"]
+  User -> belongs_to        [label="N"]
+  belongs_to -> Team        [label="1"]
+  User -> links             [label="1"]
+  links -> JudgeAccount     [label="N", color="black:invis:black"]
+  Problem -> tagged         [label="M"]
+  tagged -> Topic           [label="N"]
+  Contest -> includes       [label="M", color="black:invis:black"]
+  includes -> Problem       [label="N"]
+  User -> submits           [label="1"]
+  submits -> Submission     [label="N", color="black:invis:black"]
+  Submission -> on_problem  [label="N", color="black:invis:black"]
+  on_problem -> Problem     [label="1"]
+  Submission -> during      [label="N"]
+  during -> Contest         [label="1"]
+  User -> participates      [label="M"]
+  participates -> Contest   [label="N"]
+  User -> authors           [label="1"]
+  authors -> Sheet          [label="N", color="black:invis:black"]
+  Sheet -> contains         [label="M", color="black:invis:black"]
+  contains -> Problem       [label="N"]
+  Sheet -> assigned         [label="M"]
+  assigned -> User          [label="N"]
+  User -> completes         [label="N"]
+  Sheet -> completes        [label="N"]
+  completes -> Problem      [label="N"]
+  Sheet -> archives         [label="N"]
+  archives -> Contest       [label="1"]
+  Resource -> covers        [label="N", color="black:invis:black"]
+  covers -> Topic           [label="1"]
+  User -> adds              [label="1"]
+  adds -> Resource          [label="N", color="black:invis:black"]
+  User -> bookmarks         [label="M"]
+  bookmarks -> Resource     [label="N"]
+  Team -> schedules         [label="1"]
+  schedules -> CalendarEvent [label="N"]
+  User -> reminds           [label="M"]
+  reminds -> CalendarEvent  [label="N"]
+}
