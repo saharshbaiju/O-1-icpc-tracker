@@ -7,17 +7,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/lib/auth'
-import { ROLE_LABEL, type Role } from '@/lib/data'
 
 export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
-  const { user, role, setRole, signOut } = useAuth()
+  const { user, signOut } = useAuth()
   const navigate = useNavigate()
 
   return (
@@ -41,24 +38,6 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
       </div>
 
       <div className="flex flex-1 items-center justify-end gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="secondary" size="pill" className="hidden md:inline-flex">
-              {ROLE_LABEL[role]}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>View as</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={role}
-              onValueChange={(v) => setRole(v as Role)}
-            >
-              <DropdownMenuRadioItem value="student">Student</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="mentor">Mentor</DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button

@@ -170,7 +170,7 @@ export interface LeaderboardEntry {
 
 export interface ActivityItem {
   id: string
-  kind: 'solved' | 'contest' | 'badge' | 'sheet' | 'team' | 'comment'
+  kind: 'solved' | 'contest' | 'sheet' | 'team'
   text: string
   detail: string
   time: string
@@ -982,9 +982,9 @@ export const activity: ActivityItem[] = [
   },
   {
     id: 'ac-2',
-    kind: 'badge',
-    text: 'Unlocked Persistent',
-    detail: '45-day streak · +250 XP',
+    kind: 'sheet',
+    text: 'Assigned Flows & Matching by Prof. R. Subramanian',
+    detail: 'Due in 6 days · 18 problems',
     time: '3h ago',
   },
   {
@@ -1003,9 +1003,9 @@ export const activity: ActivityItem[] = [
   },
   {
     id: 'ac-5',
-    kind: 'comment',
-    text: 'Answered “Intuition behind Segment Tree Beats?”',
-    detail: '12 upvotes',
+    kind: 'solved',
+    text: 'Solved Min Cost Flow Rebalance',
+    detail: 'Codeforces · 2300 · Flows',
     time: '3d ago',
   },
   {
@@ -1092,18 +1092,6 @@ export const heatmap: { date: string; count: number }[] = (() => {
 })()
 
 /** Weekly practice hours by weekday × time-of-day, for the activity grid. */
-export const practiceGrid: { day: string; slot: string; value: number }[] = (() => {
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-  const slots = ['9am', '12pm', '3pm', '6pm', '9pm', '12am']
-  const out: { day: string; slot: string; value: number }[] = []
-  for (const slot of slots) {
-    for (const day of days) {
-      out.push({ day, slot, value: Math.round(rand() * 4) })
-    }
-  }
-  return out
-})()
-
 export const contestPerformance = [
   { name: 'Round 981', rank: 412, solved: 4, total: 6, delta: 31 },
   { name: 'Educational 179', rank: 1204, solved: 3, total: 7, delta: -18 },

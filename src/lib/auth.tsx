@@ -13,7 +13,6 @@ interface AuthState {
   signIn: (email?: string, role?: Role) => void
   signUp: (name: string, email: string, role: Role) => void
   signOut: () => void
-  setRole: (role: Role) => void
 }
 
 const AuthContext = React.createContext<AuthState | null>(null)
@@ -80,7 +79,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp: (name, email, role) =>
         persist({ authenticated: true, role, name, email }),
       signOut: () => persist({ authenticated: false, role: 'student' }),
-      setRole: (role) => persist({ ...state, role }),
     }
   }, [state, persist])
 

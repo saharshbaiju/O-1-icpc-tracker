@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
   ArrowUpRight,
-  CalendarClock,
   ChevronRight,
   ClipboardList,
   Flame,
@@ -10,38 +9,26 @@ import {
   Swords,
   Target,
   Trophy,
+  Users,
   Zap,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import {
-  Tooltip as UiTooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { useAuth } from '@/lib/auth'
 import {
   activity,
   compact,
   formatDateTime,
   heatmap,
-  practiceGrid,
-  ratingHistory,
+  myTeam,
+  ratingColor,
   sheets,
   solvedByMonth,
+  topicMastery,
   upcomingContests,
 } from '@/lib/data'
 import { cn } from '@/lib/utils'
@@ -51,19 +38,15 @@ const PERIODS = ['Week', 'Month', 'Year'] as const
 const KIND_ICON = {
   solved: Target,
   contest: Trophy,
-  badge: Zap,
   sheet: Play,
-  team: Swords,
-  comment: MoreHorizontal,
+  team: Users,
 } as const
 
 const KIND_TINT = {
   solved: 'bg-success/15 text-success',
   contest: 'bg-primary/15 text-primary',
-  badge: 'bg-lime/15 text-lime',
   sheet: 'bg-chart-3/15 text-chart-3',
   team: 'bg-chart-4/15 text-chart-4',
-  comment: 'bg-secondary text-muted-foreground',
 } as const
 
 /* Thin vertical bars echoing the momentum strip in the reference layout. */
@@ -94,26 +77,6 @@ function MomentumBars({
   )
 }
 
-function ChartTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean
-  payload?: { value?: number | string }[]
-  label?: string | number
-}) {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="rounded-xl border border-border bg-popover px-3 py-2 shadow-xl">
-      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
-      <p className="text-sm font-medium">{payload[0]?.value} rating</p>
-    </div>
-  )
-}
-
 export default function Dashboard() {
   const { user } = useAuth()
   const [period, setPeriod] = useState<(typeof PERIODS)[number]>('Month')
@@ -131,9 +94,10 @@ export default function Dashboard() {
   const activeSheets = sheets.filter((s) => s.completed < s.total).slice(0, 3)
   const nextContests = upcomingContests.slice(0, 3)
 
-  /* Grid of practice intensity, mirroring the "activity by time" panel. */
-  const slots = [...new Set(practiceGrid.map((c) => c.slot))]
-  const days = [...new Set(practiceGrid.map((c) => c.day))]
+  /* The two topics the whole squad is weakest at — mirrors the Teams radar. */
+  const teamWeakest = [...topicMastery]
+    .sort((a, b) => a.mastery - b.mastery)
+    .slice(0, 2)
 
   return (
     <div className="space-y-5">
@@ -240,164 +204,96 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* -------------------------------------------------- Charts row */}
+      {/* -------------------------------------------------- Team + activity */}
       <div className="grid gap-5 lg:grid-cols-3">
-        {/* Rating progression */}
-        <Card className="p-6">
+        {/* Team overview */}
+        <Card className="p-6 lg:col-span-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-medium">Rating progression</h2>
+              <Users className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-medium">Your team</h2>
             </div>
-            <Button variant="ghost" size="icon-sm" asChild>
-              <Link to="/app/analytics" aria-label="Open analytics">
-                <ArrowUpRight />
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/app/teams">
+                Manage <ChevronRight className="h-3.5 w-3.5" />
               </Link>
             </Button>
           </div>
 
-          <div className="mt-6 h-[190px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={ratingHistory}
-                margin={{ top: 4, right: 4, bottom: 0, left: -28 }}
-              >
-                <defs>
-                  <linearGradient id="ratingFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="0%"
-                      stopColor="hsl(var(--lime))"
-                      stopOpacity={0.35}
-                    />
-                    <stop
-                      offset="100%"
-                      stopColor="hsl(var(--lime))"
-                      stopOpacity={0}
-                    />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="hsl(var(--border))"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="date"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
-                  interval={1}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
-                  domain={['dataMin - 100', 'dataMax + 100']}
-                />
-                <Tooltip content={<ChartTooltip />} cursor={false} />
-                <Area
-                  type="monotone"
-                  dataKey="rating"
-                  stroke="hsl(var(--lime))"
-                  strokeWidth={2}
-                  fill="url(#ratingFill)"
-                  dot={false}
-                  activeDot={{ r: 4, fill: 'hsl(var(--lime))' }}
-                
-                  isAnimationActive={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-lime" /> Rating
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary/15 text-primary">
+              <Users className="h-5 w-5" />
             </span>
-            <span>12 contests · +643 net</span>
-          </div>
-        </Card>
-
-        {/* Practice intensity grid */}
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CalendarClock className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-medium">Practice by time</h2>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-base font-medium">{myTeam.name}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {myTeam.university} · Coached by {myTeam.coach}
+              </p>
             </div>
-            <Button variant="ghost" size="icon-sm" asChild>
-              <Link to="/app/analytics" aria-label="Open analytics">
-                <ArrowUpRight />
-              </Link>
-            </Button>
+            <Badge variant="default">
+              <Trophy className="h-3.5 w-3.5" /> Rank #{myTeam.rank}
+            </Badge>
           </div>
 
-          <div className="mt-6 overflow-x-auto">
-            <div className="min-w-[240px]">
-              <div className="mb-2 grid grid-cols-[38px_repeat(7,1fr)] gap-1.5">
-                <span />
-                {days.map((d) => (
-                  <span
-                    key={d}
-                    className="text-center text-[10px] text-muted-foreground"
-                  >
-                    {d}
-                  </span>
-                ))}
+          <div className="mt-6 grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-border/60 bg-border/60">
+            {[
+              { label: 'Team rating', value: myTeam.rating },
+              { label: 'Contests', value: myTeam.contests },
+              { label: 'Problems solved', value: myTeam.solved },
+            ].map((s) => (
+              <div key={s.label} className="bg-card px-4 py-3.5">
+                <p className="text-lg font-medium tabular-nums">{s.value}</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  {s.label}
+                </p>
               </div>
+            ))}
+          </div>
 
-              {slots.map((slot) => (
-                <div
-                  key={slot}
-                  className="mb-1.5 grid grid-cols-[38px_repeat(7,1fr)] items-center gap-1.5"
+          <ul className="mt-5 divide-y divide-border/50">
+            {myTeam.members.map((m) => (
+              <li key={m.id} className="flex items-center gap-3 py-3 first:pt-0">
+                <img
+                  src={m.avatar}
+                  alt=""
+                  className="h-9 w-9 shrink-0 rounded-full bg-secondary"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{m.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {m.role}
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    'text-sm font-medium tabular-nums',
+                    ratingColor(m.rating)
+                  )}
                 >
-                  <span className="text-[10px] text-muted-foreground">
-                    {slot}
-                  </span>
-                  {days.map((day) => {
-                    const cell = practiceGrid.find(
-                      (c) => c.day === day && c.slot === slot
-                    )
-                    const v = cell?.value ?? 0
-                    return (
-                      <UiTooltip key={day}>
-                        <TooltipTrigger asChild>
-                          <div
-                            className="h-6 rounded-md transition-transform hover:scale-110"
-                            style={{
-                              backgroundColor:
-                                v === 0
-                                  ? 'hsl(var(--secondary))'
-                                  : `hsl(var(--primary) / ${0.25 + v * 0.19})`,
-                            }}
-                          />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {day} {slot} · {v} session{v === 1 ? '' : 's'}
-                        </TooltipContent>
-                      </UiTooltip>
-                    )
-                  })}
+                  {m.rating}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-5 rounded-2xl border border-border/60 bg-secondary/30 p-4">
+            <p className="text-xs text-muted-foreground">
+              Weakest combined coverage
+            </p>
+            <p className="mt-1.5 text-sm">
+              {teamWeakest.map((w) => w.topic).join(' and ')}
+            </p>
+            <div className="mt-3 space-y-2.5">
+              {teamWeakest.map((w) => (
+                <div key={w.topic}>
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>{w.topic}</span>
+                    <span className="tabular-nums">{w.mastery}%</span>
+                  </div>
+                  <Progress value={w.mastery} className="mt-1 h-1.5" />
                 </div>
               ))}
             </div>
-          </div>
-
-          <div className="mt-4 flex items-center justify-end gap-1.5 text-[10px] text-muted-foreground">
-            Less
-            {[0, 1, 2, 3, 4].map((i) => (
-              <span
-                key={i}
-                className="h-2.5 w-2.5 rounded-[3px]"
-                style={{
-                  backgroundColor:
-                    i === 0
-                      ? 'hsl(var(--secondary))'
-                      : `hsl(var(--primary) / ${0.25 + i * 0.19})`,
-                }}
-              />
-            ))}
-            More
           </div>
         </Card>
 
@@ -408,11 +304,6 @@ export default function Dashboard() {
               <Zap className="h-4 w-4 text-primary" />
               <h2 className="text-sm font-medium">Recent activity</h2>
             </div>
-            <Button variant="ghost" size="icon-sm" asChild>
-              <Link to="/app/analytics" aria-label="Open analytics">
-                <ArrowUpRight />
-              </Link>
-            </Button>
           </div>
 
           <ul className="mt-5 space-y-1">
