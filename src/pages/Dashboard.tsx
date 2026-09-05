@@ -1,10 +1,7 @@
-import { useMemo, useState } from 'react'
 import {
-  ArrowUpRight,
+  CalendarClock,
   ChevronRight,
   ClipboardList,
-  Flame,
-  MoreHorizontal,
   Play,
   Swords,
   Target,
@@ -21,19 +18,20 @@ import { Progress } from '@/components/ui/progress'
 import { useAuth } from '@/lib/auth'
 import {
   activity,
+  ASSIGNED_TO_ME,
   compact,
+  daysLeft,
+  deadlineLabel,
+  deadlineTone,
+  formatDate,
   formatDateTime,
-  heatmap,
   myTeam,
   ratingColor,
   sheets,
-  solvedByMonth,
   topicMastery,
   upcomingContests,
 } from '@/lib/data'
 import { cn } from '@/lib/utils'
-
-const PERIODS = ['Week', 'Month', 'Year'] as const
 
 const KIND_ICON = {
   solved: Target,
@@ -49,60 +47,34 @@ const KIND_TINT = {
   team: 'bg-chart-4/15 text-chart-4',
 } as const
 
-/* Thin vertical bars echoing the momentum strip in the reference layout. */
-function MomentumBars({
-  data,
-  tint,
-}: {
-  data: number[]
-  tint: 'primary' | 'lime'
-}) {
-  const max = Math.max(...data, 1)
-  return (
-    <div className="flex h-24 items-end gap-[3px]">
-      {data.map((v, i) => (
-        <div
-          key={i}
-          className={cn(
-            'flex-1 rounded-sm',
-            tint === 'primary' ? 'bg-primary' : 'bg-lime'
-          )}
-          style={{
-            height: `${Math.max(6, (v / max) * 100)}%`,
-            opacity: 0.35 + (v / max) * 0.65,
-          }}
-        />
-      ))}
-    </div>
-  )
-}
-
 export default function Dashboard() {
   const { user } = useAuth()
-  const [period, setPeriod] = useState<(typeof PERIODS)[number]>('Month')
 
   const firstName = user?.name.split(' ')[0] ?? 'there'
 
-  /* Recent daily solve counts drive both momentum strips. */
-  const recent = useMemo(() => heatmap.slice(-56).map((d) => d.count), [])
-  const momentumA = recent.slice(0, 28)
-  const momentumB = recent.slice(28)
+  /* Sheets a mentor assigned that still have problems left, soonest first. */
+  const myOpenSheets = sheets
+    .filter((s) => ASSIGNED_TO_ME.includes(s.id) && s.completed < s.total)
+    .sort((a, b) => daysLeft(a.deadline) - daysLeft(b.deadline))
 
-  const monthTotal = solvedByMonth[solvedByMonth.length - 1]
-  const solvedThisMonth = monthTotal.easy + monthTotal.medium + monthTotal.hard
+  const activeSheets = myOpenSheets.slice(0, 3)
+  const nextDeadline = myOpenSheets[0]
+  const problemsLeft = myOpenSheets.reduce(
+    (n, s) => n + (s.total - s.completed),
+    0
+  )
+  const overdue = myOpenSheets.filter((s) => daysLeft(s.deadline) < 0).length
 
-  const activeSheets = sheets.filter((s) => s.completed < s.total).slice(0, 3)
   const nextContests = upcomingContests.slice(0, 3)
 
   /* The two topics the whole squad is weakest at — mirrors the Teams radar. */
   const teamWeakest = [...topicMastery]
     .sort((a, b) => a.mastery - b.mastery)
     .slice(0, 2)
-
   return (
     <div className="space-y-5">
       {/* -------------------------------------------------- Greeting */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <h1
           className="text-4xl leading-tight tracking-tight sm:text-5xl"
           style={{ fontFamily: "'Instrument Serif', serif" }}
@@ -111,103 +83,90 @@ export default function Dashboard() {
           <span className="text-muted-foreground">{firstName}</span>
         </h1>
 
-        <div className="inline-flex items-center gap-1 self-start rounded-full border border-border/70 bg-card p-1 sm:self-auto">
-          {PERIODS.map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={cn(
-                'rounded-full px-5 py-1.5 text-sm transition-colors',
-                period === p
-                  ? 'bg-foreground font-medium text-background'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              {p}
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-2">
+          <Button size="pill" variant="contrast" asChild>
+            <Link to="/app/problems">
+              Practice <Target className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button size="pill" variant="secondary" asChild>
+            <Link to="/app/sheets">
+              Sheets <ClipboardList className="h-4 w-4" />
+            </Link>
+          </Button>
         </div>
       </div>
 
-      {/* -------------------------------------------------- Hero stats */}
+      {/* -------------------------------------------------- Focus + team */}
       <div className="grid gap-5 lg:grid-cols-12">
-        <Card className="p-6 lg:col-span-4">
-          <p className="text-sm text-muted-foreground">Current rating</p>
-          <div className="mt-3 flex items-end gap-2">
-            <span className="text-5xl font-medium tracking-tight">
-              {user?.rating}
-            </span>
-            <span className="mb-1.5 inline-flex items-center gap-0.5 text-sm font-medium text-success">
-              <ArrowUpRight className="h-4 w-4" />
-              +6.4%
-            </span>
+        {/* What to do next */}
+        <Card className="flex flex-col p-6 lg:col-span-4">
+          <div className="flex items-center gap-2">
+            <CalendarClock className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-medium">Up next</h2>
           </div>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Peak rating:{' '}
-            <span className="text-foreground">{user?.maxRating}</span> ·{' '}
-            <span className="text-primary">{user?.rank}</span>
-          </p>
 
-          <div className="mt-6 flex flex-wrap gap-2">
-            <Button size="pill" variant="contrast" asChild>
-              <Link to="/app/problems">
-                Practice <Target className="h-4 w-4" />
+          {nextDeadline ? (
+            <>
+              <p className="mt-5 text-xs text-muted-foreground">
+                Closest deadline
+              </p>
+              <Link
+                to="/app/sheets"
+                className="mt-1 block text-xl font-medium leading-snug transition-colors hover:text-primary"
+              >
+                {nextDeadline.title}
               </Link>
-            </Button>
-            <Button size="pill" variant="secondary" asChild>
-              <Link to="/app/sheets">
-                Sheets <ClipboardList className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button size="icon" variant="secondary" className="rounded-full" asChild>
-              <Link to="/app/analytics" aria-label="Open analytics">
-                <MoreHorizontal />
-              </Link>
-            </Button>
+              <p
+                className={cn(
+                  'mt-1.5 text-sm',
+                  deadlineTone(nextDeadline.deadline)
+                )}
+              >
+                {formatDate(nextDeadline.deadline)} ·{' '}
+                {deadlineLabel(nextDeadline.deadline)}
+              </p>
+              <Progress
+                value={Math.round(
+                  (nextDeadline.completed / nextDeadline.total) * 100
+                )}
+                className="mt-4 h-1.5"
+              />
+              <p className="mt-2 text-xs text-muted-foreground">
+                {nextDeadline.completed} / {nextDeadline.total} done
+              </p>
+            </>
+          ) : (
+            <p className="mt-5 text-sm text-muted-foreground">
+              Every assigned sheet is finished. Ask your mentor for the next one.
+            </p>
+          )}
+
+          <div className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/60 bg-border/60">
+            <div className="bg-card px-4 py-3.5">
+              <p className="text-lg font-medium tabular-nums">{problemsLeft}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                Problems left
+              </p>
+            </div>
+            <div className="bg-card px-4 py-3.5">
+              <p
+                className={cn(
+                  'text-lg font-medium tabular-nums',
+                  overdue > 0 && 'text-destructive'
+                )}
+              >
+                {overdue}
+              </p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                Overdue sheets
+              </p>
+            </div>
           </div>
         </Card>
 
-        <Card className="grid gap-6 p-6 sm:grid-cols-2 lg:col-span-8">
-          <div className="sm:border-r sm:border-border/60 sm:pr-6">
-            <p className="text-2xl font-medium tracking-tight">
-              {solvedThisMonth}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Problems solved · {period.toLowerCase()}
-            </p>
-            <div className="mt-6">
-              <MomentumBars data={momentumA} tint="primary" />
-            </div>
-            <div className="mt-3 flex items-center gap-2 text-xs">
-              <Badge variant="default">+23%</Badge>
-              <span className="text-muted-foreground">vs. previous period</span>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-2xl font-medium tracking-tight">
-              {user?.streak} days
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Current practice streak
-            </p>
-            <div className="mt-6">
-              <MomentumBars data={momentumB} tint="lime" />
-            </div>
-            <div className="mt-3 flex items-center gap-2 text-xs">
-              <Badge variant="lime">
-                <Flame className="h-3 w-3" /> Longest 61
-              </Badge>
-              <span className="text-muted-foreground">unbroken through July</span>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* -------------------------------------------------- Team + activity */}
-      <div className="grid gap-5 lg:grid-cols-3">
         {/* Team overview */}
-        <Card className="p-6 lg:col-span-2">
+        <Card className="p-6 lg:col-span-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-primary" />
@@ -296,52 +255,51 @@ export default function Dashboard() {
             </div>
           </div>
         </Card>
+      </div>
 
-        {/* Recent activity */}
+      {/* -------------------------------------------------- Lists */}
+      <div className="grid gap-5 lg:grid-cols-3">
+        {/* Active sheets */}
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-medium">Recent activity</h2>
+              <Target className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-medium">Active sheets</h2>
             </div>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/app/sheets">
+                All <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
           </div>
 
-          <ul className="mt-5 space-y-1">
-            {activity.slice(0, 6).map((a) => {
-              const Icon = KIND_ICON[a.kind]
+          <ul className="mt-5 space-y-5">
+            {activeSheets.map((s) => {
+              const pct = Math.round((s.completed / s.total) * 100)
               return (
-                <li
-                  key={a.id}
-                  className="flex items-start gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-secondary/50"
-                >
-                  <span
-                    className={cn(
-                      'mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg',
-                      KIND_TINT[a.kind]
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm">{a.text}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {a.detail}
-                    </p>
+                <li key={s.id}>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="truncate text-sm">{s.title}</p>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {s.completed}/{s.total}
+                    </span>
                   </div>
-                  <span className="shrink-0 text-[11px] text-muted-foreground">
-                    {a.time}
-                  </span>
+                  <Progress value={pct} className="mt-2.5" />
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    {s.author} · due{' '}
+                    {new Date(s.deadline).toLocaleDateString('en-GB', {
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                  </p>
                 </li>
               )
             })}
           </ul>
         </Card>
-      </div>
 
-      {/* -------------------------------------------------- Bottom row */}
-      <div className="grid gap-5 lg:grid-cols-3">
         {/* Upcoming contests */}
-        <Card className="p-6 lg:col-span-2">
+        <Card className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Swords className="h-4 w-4 text-primary" />
@@ -387,39 +345,40 @@ export default function Dashboard() {
           </ul>
         </Card>
 
-        {/* Active sheets */}
+        {/* Recent activity */}
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-medium">Active sheets</h2>
+              <Zap className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-medium">Recent activity</h2>
             </div>
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/app/sheets">
-                All <ChevronRight className="h-3.5 w-3.5" />
-              </Link>
-            </Button>
           </div>
 
-          <ul className="mt-5 space-y-5">
-            {activeSheets.map((s) => {
-              const pct = Math.round((s.completed / s.total) * 100)
+          <ul className="mt-5 space-y-1">
+            {activity.slice(0, 6).map((a) => {
+              const Icon = KIND_ICON[a.kind]
               return (
-                <li key={s.id}>
-                  <div className="flex items-baseline justify-between gap-3">
-                    <p className="truncate text-sm">{s.title}</p>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {s.completed}/{s.total}
-                    </span>
+                <li
+                  key={a.id}
+                  className="flex items-start gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-secondary/50"
+                >
+                  <span
+                    className={cn(
+                      'mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg',
+                      KIND_TINT[a.kind]
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm">{a.text}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {a.detail}
+                    </p>
                   </div>
-                  <Progress value={pct} className="mt-2.5" />
-                  <p className="mt-1.5 text-[11px] text-muted-foreground">
-                    {s.author} · due{' '}
-                    {new Date(s.deadline).toLocaleDateString('en-GB', {
-                      day: 'numeric',
-                      month: 'short',
-                    })}
-                  </p>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">
+                    {a.time}
+                  </span>
                 </li>
               )
             })}

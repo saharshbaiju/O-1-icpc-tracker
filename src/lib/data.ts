@@ -1110,6 +1110,31 @@ export function difficultyVariant(d: Difficulty) {
   return d.toLowerCase() as 'easy' | 'medium' | 'hard'
 }
 
+/** The product's "today" — all deadline maths is relative to this. */
+export const TODAY = new Date('2026-07-26T00:00:00')
+
+/** Sheets a mentor has pushed to the signed-in student. */
+export const ASSIGNED_TO_ME = ['s-01', 's-02', 's-04', 's-06']
+
+export function daysLeft(deadline: string) {
+  const d = new Date(`${deadline}T00:00:00`)
+  return Math.round((d.getTime() - TODAY.getTime()) / 86_400_000)
+}
+
+export function deadlineTone(deadline: string) {
+  const left = daysLeft(deadline)
+  if (left < 0) return 'text-destructive'
+  if (left <= 7) return 'text-warning'
+  return 'text-muted-foreground'
+}
+
+export function deadlineLabel(deadline: string) {
+  const left = daysLeft(deadline)
+  if (left < 0) return `Overdue by ${Math.abs(left)}d`
+  if (left === 0) return 'Due today'
+  return `${left}d left`
+}
+
 export function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', {
     day: 'numeric',
