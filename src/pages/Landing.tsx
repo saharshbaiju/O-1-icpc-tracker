@@ -8,7 +8,6 @@ import {
   Flame,
   ListTodo,
   Medal,
-  MessagesSquare,
   ShieldCheck,
   Sparkles,
   Swords,
@@ -18,7 +17,6 @@ import {
 import { Link } from 'react-router-dom'
 
 import { Brand } from '@/components/Brand'
-import { GithubMark } from '@/components/BrandIcons'
 import { VideoBackground } from '@/components/VideoBackground'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -27,22 +25,22 @@ import { Card } from '@/components/ui/card'
 const NAV_LINKS = [
   { label: 'Features', href: '#features' },
   { label: 'Practice', href: '#practice' },
-  { label: 'Contests', href: '#contests' },
-  { label: 'Community', href: '#community' },
+  { label: 'Progress', href: '#contests' },
+  { label: 'Teams', href: '#community' },
 ]
 
 const STATS = [
   { value: '8,940', label: 'Problems indexed' },
   { value: '4,218', label: 'Coders training' },
-  { value: '216', label: 'Contests hosted' },
-  { value: '6', label: 'Judges synced' },
+  { value: '1,140', label: 'Sheet problems assigned' },
+  { value: '1', label: 'Judge synced' },
 ]
 
 const FEATURES = [
   {
     icon: ListTodo,
     title: 'Problem repository',
-    body: 'One searchable index across Codeforces, CodeChef, LeetCode, and AtCoder — filter by topic, rating, tag, or platform, with editorials, hints, and discussion attached.',
+    body: 'One searchable index synced from Codeforces — filter by topic, rating, tag, or difficulty, with editorials and hints attached.',
     span: 'lg:col-span-2',
   },
   {
@@ -52,8 +50,8 @@ const FEATURES = [
   },
   {
     icon: Swords,
-    title: 'Virtual contests',
-    body: 'Spin up mock ICPC rounds with live scoreboards, freeze, penalties, and full history.',
+    title: 'Past ICPC archives',
+    body: 'Assign a past regional or World Final as a sheet and track who cleared what.',
   },
   {
     icon: ChartSpline,
@@ -69,7 +67,7 @@ const FEATURES = [
   {
     icon: Trophy,
     title: 'Leaderboards',
-    body: 'Global, team, and per-contest rankings with filters and performance insight.',
+    body: 'Global, university, and team rankings with filters and performance insight.',
   },
   {
     icon: BookOpen,
@@ -77,27 +75,20 @@ const FEATURES = [
     body: 'Curated articles, videos, notes, and roadmaps organised by topic and level.',
   },
   {
-    icon: MessagesSquare,
-    title: 'Discussion & messaging',
-    body: 'Threads, mentor feedback, private messages, and team channels in one place.',
+    icon: CalendarDays,
+    title: 'Shared calendar',
+    body: 'Contest schedules, practice sessions, and assignment deadlines on one timeline.',
   },
 ]
 
 const SECONDARY = [
-  { icon: CalendarDays, title: 'Calendar & notifications', body: 'Contest schedules, session reminders, and assignment deadlines.' },
-  { icon: Medal, title: 'Gamification', body: 'XP, badges, milestones, and daily practice streaks.' },
-  { icon: ShieldCheck, title: 'Admin panel', body: 'Manage users, problems, contests, reports, and analytics.' },
-  { icon: BarChart3, title: 'Public profiles', body: 'Achievements, ratings, contest history, and linked judge accounts.' },
+  { icon: CalendarDays, title: 'Deadline tracking', body: 'Sheet deadlines that turn amber inside a week and red once overdue.' },
+  { icon: Medal, title: 'Practice streaks', body: 'Daily solve streaks and a full-year submission heatmap.' },
+  { icon: ShieldCheck, title: 'Mentor tools', body: 'Author sheets, assign them, and watch per-student progress land.' },
+  { icon: BarChart3, title: 'Linked judge account', body: 'Connect a Codeforces handle and let submissions sync themselves.' },
 ]
 
-const PLATFORMS = [
-  'Codeforces',
-  'CodeChef',
-  'LeetCode',
-  'AtCoder',
-  'SPOJ',
-  'GitHub',
-]
+const PLATFORMS = ['Codeforces']
 
 export default function Landing() {
   return (
@@ -163,7 +154,7 @@ export default function Landing() {
 
             <p className="animate-fade-rise-delay mt-8 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
               O(1) is the single workspace for competitive programmers — a unified
-              problem repository, mentor-built practice sheets, virtual contests,
+              problem repository, mentor-built practice sheets, past ICPC archives,
               and analytics that tell you exactly what to fix next. Stop juggling
               six tabs and a spreadsheet.
             </p>
@@ -304,25 +295,25 @@ export default function Landing() {
 
           <div id="contests">
             <Badge variant="default" className="mb-5">
-              <Swords className="h-3.5 w-3.5" /> Contests
+              <Swords className="h-3.5 w-3.5" /> Progress
             </Badge>
             <h2
               className="text-3xl leading-tight tracking-tight sm:text-5xl"
               style={{ fontFamily: "'Instrument Serif', serif" }}
             >
-              Five-hour rounds, scored like the real thing.
+              Numbers that name your next weakness.
             </h2>
             <p className="mt-5 text-base leading-relaxed text-muted-foreground">
-              Run mock ICPC sets for your team with a live scoreboard, penalty
-              time, and a scoreboard freeze. Afterwards, every submission feeds
-              your analytics — so a bad round becomes a study plan.
+              Every synced submission feeds your analytics — rating curve, topic
+              mastery, and a full-year heatmap — so a bad round becomes a study
+              plan instead of a bad mood.
             </p>
             <ul className="mt-8 space-y-3">
               {[
-                'Live standings with per-problem first-solve highlights',
-                'Team relay and individual virtual modes',
+                'Rating progression with your peak marked',
+                'Topic mastery banded by strength',
                 'Full contest history with rank and delta',
-                'Post-contest topic breakdown of what cost you',
+                'Team radar naming your two weakest areas',
               ].map((li) => (
                 <li key={li} className="flex items-start gap-3 text-sm text-muted-foreground">
                   <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-lime" />
@@ -344,12 +335,12 @@ export default function Landing() {
             className="text-3xl leading-tight tracking-tight sm:text-5xl"
             style={{ fontFamily: "'Instrument Serif', serif" }}
           >
-            Connect the judges you already use.
+            Connect the judge you already use.
           </h2>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground">
-            Link your accounts and O(1) pulls in solved problems, ratings, and
-            contest history automatically. AI assistance for recommendations and
-            code explanation is on the roadmap.
+            Link your Codeforces handle and O(1) pulls in solved problems,
+            ratings, and contest history automatically. AtCoder support is on
+            the roadmap.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
@@ -358,13 +349,7 @@ export default function Landing() {
                 key={p}
                 className="rounded-full border border-border bg-card px-5 py-2.5 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
               >
-                {p === 'GitHub' ? (
-                  <span className="inline-flex items-center gap-2">
-                    <GithubMark className="h-4 w-4" /> {p}
-                  </span>
-                ) : (
-                  p
-                )}
+                {p}
               </span>
             ))}
           </div>

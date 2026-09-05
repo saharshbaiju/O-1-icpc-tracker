@@ -26,7 +26,7 @@ const rand = mulberry32(20260726)
 /* Types                                                               */
 /* ------------------------------------------------------------------ */
 
-export type Role = 'student' | 'mentor' | 'admin'
+export type Role = 'student' | 'mentor'
 
 export type Platform =
   | 'Codeforces'
@@ -143,60 +143,6 @@ export interface Resource {
   views: number
 }
 
-export interface Discussion {
-  id: string
-  title: string
-  excerpt: string
-  author: string
-  authorAvatar: string
-  role: Role
-  replies: number
-  votes: number
-  tags: string[]
-  createdAt: string
-  solved: boolean
-}
-
-export interface Conversation {
-  id: string
-  name: string
-  handle: string
-  avatar: string
-  lastMessage: string
-  time: string
-  unread: number
-  online: boolean
-  type: 'direct' | 'team' | 'mentor'
-}
-
-export interface Message {
-  id: string
-  from: 'me' | 'them'
-  text: string
-  time: string
-}
-
-export interface Notification {
-  id: string
-  type: 'contest' | 'assignment' | 'mention' | 'achievement' | 'team' | 'system'
-  title: string
-  body: string
-  time: string
-  read: boolean
-}
-
-export interface Achievement {
-  id: string
-  name: string
-  description: string
-  icon: string
-  tier: 'bronze' | 'silver' | 'gold' | 'platinum'
-  unlocked: boolean
-  progress: number
-  target: number
-  xp: number
-}
-
 export interface CalendarEvent {
   id: string
   title: string
@@ -267,15 +213,12 @@ export const TOPICS = [
 export const ROLE_LABEL: Record<Role, string> = {
   student: 'Student',
   mentor: 'Mentor',
-  admin: 'Admin',
 }
 
 const AVATAR = (seed: string) =>
   `https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(
     seed
   )}&backgroundColor=6d28d9,7c3aed,4c1d95,312e81&radius=50`
-
-export const avatarFor = AVATAR
 
 /* ------------------------------------------------------------------ */
 /* Current user                                                        */
@@ -384,7 +327,7 @@ export const people: User[] = NAMES.map((name, i) => {
     name,
     handle,
     email: `${handle}@example.com`,
-    role: i < 3 ? 'mentor' : i === 19 ? 'admin' : 'student',
+    role: i < 3 ? 'mentor' : 'student',
     avatar: AVATAR(name),
     rating,
     maxRating: rating + Math.floor(rand() * 180),
@@ -676,7 +619,6 @@ export const contests: Contest[] = [
 ]
 
 export const upcomingContests = contests.filter((c) => c.status !== 'ended')
-export const pastContests = contests.filter((c) => c.status === 'ended')
 
 /* ------------------------------------------------------------------ */
 /* Teams                                                               */
@@ -888,349 +830,6 @@ export const resources: Resource[] = [
     level: 'Hard',
     bookmarked: false,
     views: 4120,
-  },
-]
-
-/* ------------------------------------------------------------------ */
-/* Discussions                                                         */
-/* ------------------------------------------------------------------ */
-
-export const discussions: Discussion[] = [
-  {
-    id: 'd-01',
-    title: 'Why does my Dijkstra TLE on dense graphs?',
-    excerpt:
-      'I am using a priority queue but it still times out at n=2·10^5. Is the issue my adjacency representation?',
-    author: 'Rohan Verma',
-    authorAvatar: AVATAR('Rohan Verma'),
-    role: 'student',
-    replies: 14,
-    votes: 32,
-    tags: ['Graphs', 'Optimization'],
-    createdAt: '2h ago',
-    solved: true,
-  },
-  {
-    id: 'd-02',
-    title: 'Intuition behind Segment Tree Beats?',
-    excerpt:
-      'The amortized complexity proof is hard to follow. Can someone explain the potential function argument?',
-    author: 'Meera Iyer',
-    authorAvatar: AVATAR('Meera Iyer'),
-    role: 'student',
-    replies: 8,
-    votes: 47,
-    tags: ['Segment Tree', 'Data Structures'],
-    createdAt: '5h ago',
-    solved: false,
-  },
-  {
-    id: 'd-03',
-    title: 'Team strategy for the 5-hour regional format',
-    excerpt:
-      'How do you split reading, implementation, and debugging across three people with one machine?',
-    author: 'Aarav Mehta',
-    authorAvatar: AVATAR('Aarav Mehta'),
-    role: 'mentor',
-    replies: 26,
-    votes: 118,
-    tags: ['ICPC', 'Strategy'],
-    createdAt: '1d ago',
-    solved: false,
-  },
-  {
-    id: 'd-04',
-    title: 'Digit DP template that handles leading zeros cleanly',
-    excerpt:
-      'Sharing a template I refined over the last few contests. Feedback welcome.',
-    author: 'Vikram Sethi',
-    authorAvatar: AVATAR('Vikram Sethi'),
-    role: 'student',
-    replies: 11,
-    votes: 64,
-    tags: ['Dynamic Programming', 'Templates'],
-    createdAt: '1d ago',
-    solved: true,
-  },
-  {
-    id: 'd-05',
-    title: 'Is it worth learning suffix automaton for regionals?',
-    excerpt:
-      'Given limited time, would you prioritize suffix automaton or flows?',
-    author: 'Priya Chandra',
-    authorAvatar: AVATAR('Priya Chandra'),
-    role: 'student',
-    replies: 19,
-    votes: 41,
-    tags: ['Strings', 'Preparation'],
-    createdAt: '2d ago',
-    solved: false,
-  },
-  {
-    id: 'd-06',
-    title: 'Editorial: Weekly Practice — Graphs, Problem D',
-    excerpt:
-      'Full walkthrough of the intended solution with complexity analysis.',
-    author: 'Ishita Rao',
-    authorAvatar: AVATAR('Ishita Rao'),
-    role: 'mentor',
-    replies: 5,
-    votes: 89,
-    tags: ['Editorial', 'Graphs'],
-    createdAt: '3d ago',
-    solved: false,
-  },
-]
-
-/* ------------------------------------------------------------------ */
-/* Messaging                                                           */
-/* ------------------------------------------------------------------ */
-
-export const conversations: Conversation[] = [
-  {
-    id: 'cv-01',
-    name: 'Segfault Sentinels',
-    handle: 'team',
-    avatar: AVATAR('Segfault Sentinels'),
-    lastMessage: 'Ananya: I will take the geometry problem tonight.',
-    time: '4m',
-    unread: 3,
-    online: true,
-    type: 'team',
-  },
-  {
-    id: 'cv-02',
-    name: 'Aarav Mehta',
-    handle: 'aarav_mehta',
-    avatar: AVATAR('Aarav Mehta'),
-    lastMessage: 'Your flows submission looks solid — one edge case though.',
-    time: '22m',
-    unread: 1,
-    online: true,
-    type: 'mentor',
-  },
-  {
-    id: 'cv-03',
-    name: 'Ishita Rao',
-    handle: 'ishita_rao',
-    avatar: AVATAR('Ishita Rao'),
-    lastMessage: 'Pushed the new DP sheet. Deadline is the 12th.',
-    time: '1h',
-    unread: 0,
-    online: false,
-    type: 'mentor',
-  },
-  {
-    id: 'cv-04',
-    name: 'Rohan Verma',
-    handle: 'rohan_verma',
-    avatar: AVATAR('Rohan Verma'),
-    lastMessage: 'Want to do a virtual round tomorrow?',
-    time: '3h',
-    unread: 0,
-    online: true,
-    type: 'direct',
-  },
-  {
-    id: 'cv-05',
-    name: 'Meera Iyer',
-    handle: 'meera_iyer',
-    avatar: AVATAR('Meera Iyer'),
-    lastMessage: 'Thanks for the segment tree explanation!',
-    time: '1d',
-    unread: 0,
-    online: false,
-    type: 'direct',
-  },
-]
-
-export const sampleThread: Message[] = [
-  {
-    id: 'm-1',
-    from: 'them',
-    text: 'Saw your submission on the flows problem. The approach is right.',
-    time: '10:02',
-  },
-  {
-    id: 'm-2',
-    from: 'them',
-    text: 'But you are not handling the case where the source and sink are disconnected — it will divide by zero.',
-    time: '10:02',
-  },
-  { id: 'm-3', from: 'me', text: 'Ah, that would explain the RE on test 14.', time: '10:05' },
-  {
-    id: 'm-4',
-    from: 'me',
-    text: 'Let me add a reachability check before the scaling loop.',
-    time: '10:05',
-  },
-  {
-    id: 'm-5',
-    from: 'them',
-    text: 'Exactly. Also try Dinic instead of Edmonds-Karp here, the graph is unit capacity.',
-    time: '10:08',
-  },
-  { id: 'm-6', from: 'me', text: 'On it. Will resubmit tonight.', time: '10:09' },
-]
-
-/* ------------------------------------------------------------------ */
-/* Notifications                                                       */
-/* ------------------------------------------------------------------ */
-
-export const notifications: Notification[] = [
-  {
-    id: 'n-01',
-    type: 'contest',
-    title: 'ICPC Amritapuri Mock Round 7 starts in 3 hours',
-    body: '11 problems · 5 hours · 428 registered',
-    time: '12m ago',
-    read: false,
-  },
-  {
-    id: 'n-02',
-    type: 'assignment',
-    title: 'Ishita Rao assigned you “DP Ladder”',
-    body: 'Due 12 Aug 2026 · 50 problems',
-    time: '1h ago',
-    read: false,
-  },
-  {
-    id: 'n-03',
-    type: 'achievement',
-    title: 'Streak milestone: 45 days',
-    body: 'You unlocked the Persistent badge (+250 XP)',
-    time: '3h ago',
-    read: false,
-  },
-  {
-    id: 'n-04',
-    type: 'mention',
-    title: 'Rohan Verma mentioned you',
-    body: 'in “Why does my Dijkstra TLE on dense graphs?”',
-    time: '5h ago',
-    read: true,
-  },
-  {
-    id: 'n-05',
-    type: 'team',
-    title: 'Ananya Ghosh joined Segfault Sentinels',
-    body: 'Your team is now full for the regional.',
-    time: '1d ago',
-    read: true,
-  },
-  {
-    id: 'n-06',
-    type: 'system',
-    title: 'Codeforces account synced',
-    body: '862 solved problems imported.',
-    time: '2d ago',
-    read: true,
-  },
-]
-
-/* ------------------------------------------------------------------ */
-/* Gamification                                                        */
-/* ------------------------------------------------------------------ */
-
-export const achievements: Achievement[] = [
-  {
-    id: 'a-01',
-    name: 'First Blood',
-    description: 'Solve your first problem',
-    icon: 'Zap',
-    tier: 'bronze',
-    unlocked: true,
-    progress: 1,
-    target: 1,
-    xp: 50,
-  },
-  {
-    id: 'a-02',
-    name: 'Century',
-    description: 'Solve 100 problems',
-    icon: 'Target',
-    tier: 'silver',
-    unlocked: true,
-    progress: 862,
-    target: 100,
-    xp: 300,
-  },
-  {
-    id: 'a-03',
-    name: 'Persistent',
-    description: 'Maintain a 45-day streak',
-    icon: 'Flame',
-    tier: 'gold',
-    unlocked: true,
-    progress: 47,
-    target: 45,
-    xp: 250,
-  },
-  {
-    id: 'a-04',
-    name: 'Graph Whisperer',
-    description: 'Solve 150 graph problems',
-    icon: 'Share2',
-    tier: 'gold',
-    unlocked: true,
-    progress: 168,
-    target: 150,
-    xp: 400,
-  },
-  {
-    id: 'a-05',
-    name: 'Expert Ascent',
-    description: 'Reach 1900 rating',
-    icon: 'TrendingUp',
-    tier: 'gold',
-    unlocked: false,
-    progress: 1847,
-    target: 1900,
-    xp: 500,
-  },
-  {
-    id: 'a-06',
-    name: 'Marathoner',
-    description: 'Complete a 5-hour mock ICPC',
-    icon: 'Timer',
-    tier: 'silver',
-    unlocked: true,
-    progress: 4,
-    target: 1,
-    xp: 200,
-  },
-  {
-    id: 'a-07',
-    name: 'Mentor’s Pick',
-    description: 'Get an editorial featured',
-    icon: 'Award',
-    tier: 'platinum',
-    unlocked: false,
-    progress: 0,
-    target: 1,
-    xp: 800,
-  },
-  {
-    id: 'a-08',
-    name: 'Full Sheet',
-    description: 'Complete 5 practice sheets',
-    icon: 'ListChecks',
-    tier: 'silver',
-    unlocked: false,
-    progress: 2,
-    target: 5,
-    xp: 350,
-  },
-  {
-    id: 'a-09',
-    name: 'Unstoppable',
-    description: 'Maintain a 100-day streak',
-    icon: 'Infinity',
-    tier: 'platinum',
-    unlocked: false,
-    progress: 47,
-    target: 100,
-    xp: 1000,
   },
 ]
 
@@ -1513,80 +1112,6 @@ export const contestPerformance = [
   { name: 'ABC 402', rank: 612, solved: 5, total: 7, delta: 12 },
   { name: 'Regionals Sim #4', rank: 24, solved: 7, total: 12, delta: 58 },
   { name: 'DP Speedrun', rank: 8, solved: 5, total: 6, delta: 31 },
-]
-
-/* ------------------------------------------------------------------ */
-/* Admin                                                               */
-/* ------------------------------------------------------------------ */
-
-export const adminStats = {
-  totalUsers: 4218,
-  activeToday: 1147,
-  problems: 8940,
-  contests: 216,
-  sheets: 84,
-  reports: 7,
-  storage: 68,
-  uptime: 99.97,
-}
-
-export const adminUserRows = people.map((p, i) => ({
-  ...p,
-  status: (i % 7 === 0 ? 'suspended' : i % 3 === 0 ? 'pending' : 'active') as
-    | 'active'
-    | 'pending'
-    | 'suspended',
-  lastActive: ['2m ago', '18m ago', '3h ago', '1d ago', '5d ago'][i % 5],
-}))
-
-export const adminReports = [
-  {
-    id: 'rp-1',
-    subject: 'Spam in discussion thread',
-    reporter: 'Meera Iyer',
-    target: 'Post #4821',
-    severity: 'low' as const,
-    time: '2h ago',
-  },
-  {
-    id: 'rp-2',
-    subject: 'Plagiarised editorial submission',
-    reporter: 'Aarav Mehta',
-    target: 'user: neel_trivedi',
-    severity: 'high' as const,
-    time: '6h ago',
-  },
-  {
-    id: 'rp-3',
-    subject: 'Broken problem link',
-    reporter: 'Rohan Verma',
-    target: 'Problem D1409',
-    severity: 'medium' as const,
-    time: '1d ago',
-  },
-  {
-    id: 'rp-4',
-    subject: 'Contest scoreboard mismatch',
-    reporter: 'Ishita Rao',
-    target: 'Regionals Sim #4',
-    severity: 'high' as const,
-    time: '2d ago',
-  },
-]
-
-export const signupTrend = [
-  { month: 'Feb', users: 180 },
-  { month: 'Mar', users: 264 },
-  { month: 'Apr', users: 312 },
-  { month: 'May', users: 289 },
-  { month: 'Jun', users: 401 },
-  { month: 'Jul', users: 476 },
-  { month: 'Aug', users: 522 },
-  { month: 'Sep', users: 498 },
-  { month: 'Oct', users: 611 },
-  { month: 'Nov', users: 703 },
-  { month: 'Dec', users: 668 },
-  { month: 'Jan', users: 794 },
 ]
 
 /* ------------------------------------------------------------------ */

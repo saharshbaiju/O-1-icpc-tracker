@@ -30,7 +30,14 @@ interface Persisted {
 function read(): Persisted {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw) as Persisted
+    if (raw) {
+      const parsed = JSON.parse(raw) as Persisted
+      // Older builds persisted an 'admin' role that no longer exists.
+      if (parsed.role !== 'student' && parsed.role !== 'mentor') {
+        parsed.role = 'student'
+      }
+      return parsed
+    }
   } catch {
     /* ignore malformed storage */
   }

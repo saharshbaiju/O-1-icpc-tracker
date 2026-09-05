@@ -3,6 +3,7 @@ import {
   ArrowUpRight,
   CalendarClock,
   ChevronRight,
+  ClipboardList,
   Flame,
   MoreHorizontal,
   Play,
@@ -190,8 +191,8 @@ export default function Dashboard() {
               </Link>
             </Button>
             <Button size="pill" variant="secondary" asChild>
-              <Link to="/app/contests">
-                Contests <Swords className="h-4 w-4" />
+              <Link to="/app/sheets">
+                Sheets <ClipboardList className="h-4 w-4" />
               </Link>
             </Button>
             <Button size="icon" variant="secondary" className="rounded-full" asChild>
@@ -408,7 +409,7 @@ export default function Dashboard() {
               <h2 className="text-sm font-medium">Recent activity</h2>
             </div>
             <Button variant="ghost" size="icon-sm" asChild>
-              <Link to="/app/profile" aria-label="Open profile">
+              <Link to="/app/analytics" aria-label="Open analytics">
                 <ArrowUpRight />
               </Link>
             </Button>
@@ -456,7 +457,7 @@ export default function Dashboard() {
               <h2 className="text-sm font-medium">Upcoming contests</h2>
             </div>
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/app/contests">
+              <Link to="/app/calendar">
                 View all <ChevronRight className="h-3.5 w-3.5" />
               </Link>
             </Button>
@@ -489,9 +490,6 @@ export default function Dashboard() {
                       {formatDateTime(c.startsAt)}
                     </span>
                   )}
-                  <Button size="sm" variant="secondary">
-                    {c.status === 'live' ? 'Enter' : 'Register'}
-                  </Button>
                 </div>
               </li>
             ))}

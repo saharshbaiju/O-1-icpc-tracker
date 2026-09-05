@@ -91,7 +91,7 @@ const QUICK_TOPICS = TOPICS.slice(0, 10)
 
 export default function Problems() {
   const { role } = useAuth()
-  const canAuthor = role === 'mentor' || role === 'admin'
+  const canAuthor = role === 'mentor'
 
   const [query, setQuery] = useState('')
   const [platform, setPlatform] = useState('all')

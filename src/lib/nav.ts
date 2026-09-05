@@ -28,32 +28,19 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: 'Problems', to: '/app/problems', icon: 'ListTodo' },
       { label: 'Practice Sheets', to: '/app/sheets', icon: 'ClipboardList' },
-      { label: 'Contests', to: '/app/contests', icon: 'Swords' },
       { label: 'Resources', to: '/app/resources', icon: 'BookOpen' },
     ],
   },
   {
-    title: 'Community',
+    title: 'Team',
     items: [
       { label: 'Teams', to: '/app/teams', icon: 'Users' },
-      { label: 'Discussions', to: '/app/discussions', icon: 'MessagesSquare' },
-      { label: 'Messages', to: '/app/messages', icon: 'Send', badge: 4 },
       { label: 'Calendar', to: '/app/calendar', icon: 'CalendarDays' },
     ],
   },
   {
     title: 'You',
-    items: [
-      { label: 'Profile', to: '/app/profile', icon: 'User' },
-      { label: 'Achievements', to: '/app/achievements', icon: 'Medal' },
-      { label: 'Settings', to: '/app/settings', icon: 'Settings' },
-      {
-        label: 'Admin Panel',
-        to: '/app/admin',
-        icon: 'ShieldCheck',
-        roles: ['admin'],
-      },
-    ],
+    items: [{ label: 'Settings', to: '/app/settings', icon: 'Settings' }],
   },
 ]
 

@@ -38,7 +38,7 @@ import {
 import type { LeaderboardEntry } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
-const SCOPES = ['Global', 'My university', 'My team', 'Contest'] as const
+const SCOPES = ['Global', 'My university', 'My team'] as const
 const METRICS = [
   { key: 'rating', label: 'Rating' },
   { key: 'solved', label: 'Problems solved' },
@@ -171,7 +171,7 @@ export default function Leaderboard() {
     <div className="space-y-6">
       <PageHeader
         title="Leaderboard"
-        description="Global, university, team and per-contest rankings — filterable by time range and by the metric you actually care about."
+        description="Global, university and team rankings — filterable by time range and by the metric you actually care about."
         actions={
           <Button variant="outline" size="pill" asChild>
             <Link to="/app/analytics">Your analytics</Link>
@@ -284,8 +284,10 @@ export default function Leaderboard() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Link
-                      to={`/app/profile/${e.handle}`}
+                    <a
+                      href={`https://codeforces.com/profile/${e.handle}`}
+                      target="_blank"
+                      rel="noreferrer"
                       className="flex items-center gap-2.5 transition-colors hover:text-primary"
                     >
                       <img
@@ -299,7 +301,7 @@ export default function Leaderboard() {
                           @{e.handle}
                         </p>
                       </div>
-                    </Link>
+                    </a>
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                     {e.team}

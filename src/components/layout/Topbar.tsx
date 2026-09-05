@@ -1,7 +1,6 @@
-import { Bell, LogOut, Menu, Search, Settings, User as UserIcon } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { LogOut, Menu, Search, Settings } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -15,12 +14,11 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/lib/auth'
-import { notifications, ROLE_LABEL, type Role } from '@/lib/data'
+import { ROLE_LABEL, type Role } from '@/lib/data'
 
 export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
   const { user, role, setRole, signOut } = useAuth()
   const navigate = useNavigate()
-  const unread = notifications.filter((n) => !n.read).length
 
   return (
     <header className="sticky top-0 z-30 flex h-[72px] items-center gap-3 border-b border-border/70 bg-background/80 px-4 backdrop-blur-xl sm:px-6">
@@ -37,7 +35,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
       <div className="relative hidden max-w-md flex-1 sm:block">
         <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search problems, teams, contests…"
+          placeholder="Search problems, sheets, teams…"
           className="h-10 rounded-full pl-10"
         />
       </div>
@@ -57,26 +55,9 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
             >
               <DropdownMenuRadioItem value="student">Student</DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="mentor">Mentor</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="admin">Admin</DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        <Button
-          variant="secondary"
-          size="icon"
-          className="relative rounded-full"
-          asChild
-        >
-          <Link to="/app/notifications" aria-label="Notifications">
-            <Bell />
-            {unread > 0 && (
-              <Badge className="absolute -right-0.5 -top-0.5 h-4 min-w-4 justify-center px-1 text-[10px]">
-                {unread}
-              </Badge>
-            )}
-          </Link>
-        </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -94,9 +75,6 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>{user?.name}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => navigate('/app/profile')}>
-              <UserIcon className="h-4 w-4" /> Profile
-            </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => navigate('/app/settings')}>
               <Settings className="h-4 w-4" /> Settings
             </DropdownMenuItem>

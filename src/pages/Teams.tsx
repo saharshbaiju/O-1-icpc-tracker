@@ -5,7 +5,6 @@ import {
   Crown,
   KeyRound,
   Link2,
-  MessageSquare,
   MoreHorizontal,
   Plus,
   Radar as RadarIcon,
@@ -85,7 +84,7 @@ export default function Teams() {
     <div className="space-y-6">
       <PageHeader
         title="Teams"
-        description="Build a three-person squad, track combined topic coverage, and keep templates, notes and contest plans in one shared place."
+        description="Build a three-person squad, track combined topic coverage, and keep shared notes and practice plans in one place."
         actions={
           <>
             <Button variant="outline" size="pill" onClick={() => setJoinOpen(true)}>
@@ -125,7 +124,7 @@ export default function Teams() {
             </div>
 
             <Button variant="secondary" size="pill" asChild>
-              <Link to="/app/contests">Schedule a practice round</Link>
+              <Link to="/app/calendar">Schedule a practice round</Link>
             </Button>
           </div>
 
@@ -189,14 +188,13 @@ export default function Teams() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem asChild>
-                      <Link to="/app/messages">
-                        <MessageSquare className="h-4 w-4" /> Message
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to={`/app/profile/${m.handle}`}>
-                        <UserRound className="h-4 w-4" /> View profile
-                      </Link>
+                      <a
+                        href={`https://codeforces.com/profile/${m.handle}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <UserRound className="h-4 w-4" /> Codeforces profile
+                      </a>
                     </DropdownMenuItem>
                     {role !== 'student' && (
                       <>

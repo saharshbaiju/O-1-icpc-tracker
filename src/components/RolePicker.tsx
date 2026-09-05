@@ -1,4 +1,4 @@
-import { GraduationCap, ShieldCheck, UserCog } from 'lucide-react'
+import { GraduationCap, UserCog } from 'lucide-react'
 
 import type { Role } from '@/lib/data'
 import { cn } from '@/lib/utils'
@@ -17,12 +17,6 @@ const ROLES: { value: Role; label: string; hint: string; icon: typeof Graduation
       hint: 'Build sheets, review, coach teams',
       icon: UserCog,
     },
-    {
-      value: 'admin',
-      label: 'Admin',
-      hint: 'Manage the whole platform',
-      icon: ShieldCheck,
-    },
   ]
 
 export function RolePicker({
@@ -33,7 +27,7 @@ export function RolePicker({
   onChange: (role: Role) => void
 }) {
   return (
-    <div className="grid gap-2 sm:grid-cols-3">
+    <div className="grid gap-2 sm:grid-cols-2">
       {ROLES.map((r) => {
         const active = value === r.value
         return (

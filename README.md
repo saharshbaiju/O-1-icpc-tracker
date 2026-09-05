@@ -4,8 +4,8 @@
 
 **The single workspace for competitive programmers.**
 
-A unified problem repository, mentor-built practice sheets, virtual contests, and
-analytics that tell you what to fix next — instead of six browser tabs and a spreadsheet.
+A unified problem repository, mentor-built practice sheets, and analytics that tell
+you what to fix next — instead of six browser tabs and a spreadsheet.
 
 <sub>React 19 · TypeScript · Vite · Tailwind CSS · shadcn/ui · Recharts</sub>
 
@@ -47,66 +47,46 @@ The role you pick on the way in changes what you can see.
 ## Feature tour
 
 ### Practice
-- **Problem repository** — one index across Codeforces, CodeChef, LeetCode, AtCoder,
-  SPOJ and HackerRank. Search, filter by platform/difficulty/topic/status, toggle
-  topic chips, sort by rating or acceptance, and page through results. Every filter
-  is wired to real state, not decoration.
+- **Problem repository** — one searchable index with filters for platform, difficulty,
+  topic and status, topic chips, sorting by rating or acceptance, and pagination.
+  Every filter is wired to real state, not decoration.
 - **Practice sheets** — mentor-authored topic ladders with deadlines, per-problem
   checkboxes, and progress bars. Deadlines turn amber inside 7 days and red once
   overdue. Mentors additionally get a per-student assignment roster.
 - **Learning resources** — articles, videos, notes, roadmaps, tutorials and books,
   filterable by type and topic, with working bookmarks and per-topic coverage bars.
 
-### Compete
-- **Contests** — a live banner with a countdown that genuinely ticks, upcoming/live/past
-  tabs, and an ICPC-style scoreboard with per-problem accept/reject cells, penalty
-  time, and your own row highlighted.
-- **Teams** — your squad with combined topic coverage on a radar chart that names your
-  two weakest areas, a member roster, a copy-able invite link, shared resources, and
-  a directory of other teams to join.
-- **Leaderboard** — a podium for the top three plus a full table that re-sorts live
-  by rating, problems solved, XP or streak, with your own rank pinned beneath it.
-
 ### Measure
 - **Dashboard** — rating, solve momentum, streak, a rating curve, a practice-by-time
   grid, recent activity, upcoming contests and active sheets.
 - **Analytics** — rating progression with a peak reference line, a platform donut,
-  solves stacked by difficulty per month, topic mastery bars banded by strength, and
-  a full 53-week GitHub-style submission heatmap.
-- **Profile** — public profile at `/app/profile/:handle` with connected judge accounts,
-  and tabs for overview, solved problems, contest history and achievements.
-- **Achievements** — XP and level progress, streak tracking, tiered badges
-  (bronze → platinum), and a career milestone timeline.
+  solves stacked by difficulty per month, topic mastery bars banded by strength, a
+  contest performance table, and a full 53-week submission heatmap.
+- **Leaderboard** — a podium for the top three plus a full table that re-sorts live
+  by rating, problems solved, XP or streak, with your own rank pinned beneath it.
+  Handles link out to Codeforces.
 
-### Community & admin
-- **Discussions** — threads with working vote buttons, sort and tag filters, and an
-  expanded thread showing mentor answers styled distinctly from peer replies.
-- **Messages** — two-pane messenger; typing and pressing Enter really does append
-  to the thread.
-- **Calendar** — a July 2026 month grid colour-coded by event type, with a selected-day
-  panel, upcoming list, and reminder toggles.
-- **Notifications** — grouped into Today/Earlier, filterable by type, with functional
-  mark-read and delete.
-- **Settings** — seven panes covering profile, account and sessions, connected accounts,
-  notification channels, appearance, privacy, and a danger zone whose delete button
-  stays disabled until you type `DELETE`.
-- **Admin panel** — platform stats, a growth chart, user management with bulk selection,
-  content management, moderation reports, and service status.
+### Team
+- **Teams** — your squad with combined topic coverage on a radar chart that names your
+  two weakest areas, a member roster, a copy-able invite link, shared resources, and
+  a directory of other teams to join.
+- **Calendar** — a month grid colour-coded by event type, with a selected-day panel,
+  upcoming list, and reminder toggles.
+
+### You
+- **Settings** — profile, account and sessions, connected judge accounts, notification
+  channels, appearance, privacy, and a danger zone whose delete button stays disabled
+  until you type `DELETE`.
 
 ## Roles
 
-Three roles are modelled, chosen at sign-up and switchable at any time from the
+Two roles are modelled, chosen at sign-up and switchable at any time from the
 selector in the top bar:
 
 | Role | Sees |
 | --- | --- |
-| **Student** | Practice, contests, own analytics, teams, community |
+| **Student** | Practice, own analytics, teams, leaderboard, calendar |
 | **Mentor** | The above, plus sheet authoring, assignment rosters, and student progress |
-| **Admin** | Everything, plus the Admin Panel |
-
-Access control is enforced rather than cosmetic. The Admin Panel link is hidden from
-non-admins, and navigating directly to `/app/admin` without the role renders an
-access-denied screen naming your current role.
 
 ## Routes
 
@@ -120,18 +100,10 @@ access-denied screen naming your current role.
 /app/leaderboard       Global / university / team rankings
 /app/problems          Problem repository
 /app/sheets            Practice sheets
-/app/contests          Virtual contests + live scoreboard
 /app/resources         Learning resources
 /app/teams             Team management
-/app/discussions       Community discussions
-/app/messages          Direct & team messaging
 /app/calendar          Schedule and reminders
-/app/profile           Your profile
-/app/profile/:handle   Someone else's profile
-/app/achievements      XP, badges, milestones
 /app/settings          Account settings
-/app/notifications     Notification centre
-/app/admin             Admin panel        (admin role only)
 *                      404
 ```
 
@@ -162,7 +134,7 @@ src/
 │   ├── Brand.tsx            The O(1) wordmark
 │   ├── BrandIcons.tsx       GitHub & Google marks (see the gotcha below)
 │   ├── StatCard.tsx         The standard metric tile
-│   ├── RolePicker.tsx       Student / Mentor / Admin selector
+│   ├── RolePicker.tsx       Student / Mentor selector
 │   ├── OAuthButtons.tsx     Google + GitHub sign-in
 │   └── VideoBackground.tsx  Fullscreen looping hero video
 │
@@ -177,7 +149,7 @@ series.
 
 **Everything is driven by HSL custom properties** declared in `src/index.css` and
 mapped to Tailwind in `tailwind.config.js`. Change a token there and it propagates
-across all 17 pages.
+across all 12 pages.
 
 ```css
 --background: 255 24% 4%;     /* near-black with a violet cast */
@@ -203,8 +175,8 @@ Conventions worth keeping if you extend this:
 ## Working with the mock data
 
 `src/lib/data.ts` is the single source of truth for every entity on screen: users,
-problems, sheets, contests, teams, resources, discussions, conversations,
-notifications, achievements, calendar events, leaderboards, and all the chart series.
+problems, sheets, contests, teams, resources, calendar events, leaderboards, and all
+the chart series.
 
 It exports both the data and the TypeScript types (`Problem`, `Contest`, `Team`,
 `Role`, …), plus small formatters — `formatDate`, `formatDuration`, `compact`,
@@ -232,7 +204,7 @@ so without this the charts visibly redraw each time you click a period toggle. L
 it off.
 
 **Unique gradient IDs per page.** SVG gradient IDs are global to the document. Each
-page prefixes its own (`analyticsRatingFill`, `profileRatingFill`, `adminSignupFill`).
+page prefixes its own (`analyticsRatingFill`, `dashboardRatingFill`).
 Reusing an ID makes one chart silently adopt another's fill.
 
 **TypeScript is strict about unused code.** `noUnusedLocals` and `noUnusedParameters`
@@ -248,7 +220,7 @@ Pair it with `w-full`. This is what originally broke the landing page nav bar.
 
 | Area | State |
 | --- | --- |
-| UI for all 17 routes | ✅ Complete |
+| UI for all 12 routes | ✅ Complete |
 | Design system & tokens | ✅ Complete |
 | Role-based navigation & guards | ✅ Complete (client-side) |
 | Filtering, sorting, tabs, dialogs | ✅ Interactive |

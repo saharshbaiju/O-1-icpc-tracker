@@ -100,7 +100,7 @@ type TabKey = keyof typeof TAB_LABEL
 
 export default function Sheets() {
   const { role } = useAuth()
-  const canAuthor = role === 'mentor' || role === 'admin'
+  const canAuthor = role === 'mentor'
 
   const [tab, setTab] = useState<TabKey>('assigned')
   const [createOpen, setCreateOpen] = useState(false)
