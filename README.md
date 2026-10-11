@@ -2,250 +2,151 @@
 
 # O(1)
 
-**The single workspace for competitive programmers.**
+**An ICPC practice tracker for college teams.**
 
-A unified problem repository, mentor-built practice sheets, and analytics that tell
-you what to fix next — instead of six browser tabs and a spreadsheet.
+Import your Codeforces history, practise shared problem sheets with your team,
+and compare each other side by side.
 
-<sub>React 19 · TypeScript · Vite · Tailwind CSS · shadcn/ui · Recharts</sub>
+<sub>PostgreSQL · Flask · React 19 · TypeScript · Vite · Tailwind CSS</sub>
+
+<sub>23CSE202 Database Management Systems project · Amrita School of Computing, Amritapuri</sub>
 
 </div>
 
 ---
 
-## What this is
+## What it is
 
-O(1) is an ICPC preparation tracker. It gives a competitive programming team one
-place to practise, compete, and measure — and gives the mentor coaching them a way
-to assign work and watch it land.
+ICPC teams usually track who solved what in a shared spreadsheet. The spreadsheet
+repeats the same student and problem details on every row, so it is slow to update
+and easy to get wrong. O(1) replaces it with a normalised PostgreSQL database and a
+web app on top of it.
 
-**This repository is the complete front end.** Every screen is built and navigable,
-but it runs entirely on seeded mock data — there is no backend yet. See
-[Project status](#project-status) for exactly where the seam is.
+- **Sync from Codeforces:** one click imports all your submissions, problems and topics.
+  Syncing again only adds what is new.
+- **Teams:** up to three students per team (the database enforces this with a trigger).
+- **Team sheets:** search any Codeforces problem and build a practice list the whole
+  team sees. Ticks show who has solved each problem.
+- **Team analytics:** rating, problems solved, solved this month, active days,
+  streaks, acceptance, hardest problem and topic coverage for every member, side by side.
+- **Leaderboard:** every student ranked by problems solved, filterable by college.
+- **College "did you mean":** sign-up suggests a college that is already in the
+  database, even with typos.
+- **Database page:** shows every table and view live, with keys and DDL (useful for the viva).
+
+Every number on screen comes from a SQL query over stored data, and each page has an
+**SQL** button that shows the query behind it.
+
+## Team
+
+| Roll No | Name |
+| --- | --- |
+| AM.SC.U4CSE25245 | Saharsh Baiju |
+| AM.SC.U4CSE25244 | Rishik Raj P |
+| AM.SC.U4CSE25212 | Dev Narayan U |
+| AM.SC.U4CSE25227 | Kashyap S |
 
 ## Quick start
 
+You need PostgreSQL (14 or newer), Python 3.10+ and Node.js 20+.
+
 ```bash
+# 1. Backend
+cd backend
+python -m venv venv
+source venv/bin/activate          # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python init_db.py                 # creates database "o1" and the 9 tables
+python app.py                     # API on http://127.0.0.1:5000
+
+# 2. Frontend (new terminal, project root)
 npm install
-npm run dev          # http://localhost:5173
+npm run dev                       # open http://localhost:5173
 ```
 
-You land on the marketing page. Click **Sign in** or **Start training** — auth is a
-stub, so any well-formed email works (sign-in wants 6+ characters, sign-up wants 8+).
-The role you pick on the way in changes what you can see.
+The database user and password are in `backend/config.py`, or you can set them with
+`DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` and `DB_NAME`. Vite forwards every
+`/api/...` request to Flask.
 
-| Script | What it does |
+The database starts empty. Sign up, add your Codeforces handle, and press
+**Sync from Codeforces**.
+
+| Command | What it does |
 | --- | --- |
-| `npm run dev` | Vite dev server with hot module replacement |
-| `npm run build` | Typechecks with `tsc -b`, then builds to `dist/` |
-| `npm run preview` | Serves the production build locally |
-| `npm run lint` | Runs [oxlint](https://oxc.rs) |
+| `python init_db.py` | Create the tables, or update an older database without losing data |
+| `python init_db.py --reset` | Delete everything and start empty |
+| `npm run build` | Type-check and build the frontend to `dist/` |
+| `npm run lint` | Run [oxlint](https://oxc.rs) |
 
-> `npm run build` typechecks before bundling, so a type error fails the build.
-> Treat it as the real gate, not `lint`.
+## The database
 
-## Feature tour
+Nine tables, all in BCNF:
 
-### Practice
-- **Problem repository** — one searchable index with filters for platform, difficulty,
-  topic and status, topic chips, sorting by rating or acceptance, and pagination.
-  Every filter is wired to real state, not decoration.
-- **Practice sheets** — mentor-authored topic ladders with deadlines, per-problem
-  checkboxes, and progress bars. Deadlines turn amber inside 7 days and red once
-  overdue. Mentors additionally get a per-student assignment roster.
-- **Learning resources** — articles, videos, notes, roadmaps, tutorials and books,
-  filterable by type and topic, with working bookmarks and per-topic coverage bars.
+```
+university    (univ_id PK, univ_name UNIQUE, city)
+team          (team_id PK, team_name UNIQUE)
+app_user      (user_id PK, name, email UNIQUE, password_hash, cf_handle UNIQUE,
+               cf_rating, cf_max_rating, univ_id FK, team_id FK NULL)
+topic         (topic_id PK, topic_name UNIQUE)
+problem       (problem_code PK, title, rating CHECK 800-3500)
+problem_topic (problem_code FK, topic_id FK)                      PK = both
+submission    (user_id FK, problem_code FK, submitted_at, verdict, language)
+                                                                  PK = first three
+sheet         (sheet_id PK, title, team_id FK, deadline)
+sheet_problem (sheet_id FK, problem_code FK, position)
+                     PK = (sheet_id, problem_code), UNIQUE (sheet_id, position)
+```
 
-### Measure
-- **Dashboard** — rating, solve momentum, streak, a rating curve, a practice-by-time
-  grid, recent activity, upcoming contests and active sheets.
-- **Analytics** — rating progression with a peak reference line, a platform donut,
-  solves stacked by difficulty per month, topic mastery bars banded by strength, a
-  contest performance table, and a full 53-week submission heatmap.
-- **Leaderboard** — a podium for the top three plus a full table that re-sorts live
-  by rating, problems solved, XP or streak, with your own rank pinned beneath it.
-  Handles link out to Codeforces.
+- **Constraints:** primary and foreign keys, UNIQUE, CHECK and NOT NULL. Deleting a user
+  or sheet also deletes their rows (CASCADE); deleting a team keeps its members (SET NULL).
+- **Trigger:** `team_size_check` stops a fourth member from joining a team.
+- **Views:** `v_problem_difficulty`, `v_leaderboard` and `v_sheet_progress` calculate
+  values that are never stored, so they are always correct.
+- **Index:** a GIN trigram index (`pg_trgm`) for the fuzzy college search.
+- **Transactions:** each API request is one transaction. It is committed if the request
+  works and rolled back if anything fails.
+- **Queries:** joins, GROUP BY / HAVING, NOT EXISTS, CTEs, window functions,
+  `INSERT ... ON CONFLICT` and INTERSECT.
 
-### Team
-- **Teams** — your squad with combined topic coverage on a radar chart that names your
-  two weakest areas, a member roster, a copy-able invite link, shared resources, and
-  a directory of other teams to join.
-- **Calendar** — a month grid colour-coded by event type, with a selected-day panel,
-  upcoming list, and reminder toggles.
+The full design (FDs, closure, minimal cover, 1NF to BCNF, lossless join and
+dependency preservation) is in `docs/lite/DB-Design-Lite.pdf`.
 
-### You
-- **Settings** — profile, account and sessions, connected judge accounts, notification
-  channels, appearance, privacy, and a danger zone whose delete button stays disabled
-  until you type `DELETE`.
+## Documents
 
-## Roles
-
-Two roles are modelled, chosen at sign-up and switchable at any time from the
-selector in the top bar:
-
-| Role | Sees |
+| File | What it is |
 | --- | --- |
-| **Student** | Practice, own analytics, teams, leaderboard, calendar |
-| **Mentor** | The above, plus sheet authoring, assignment rosters, and student progress |
-
-## Routes
-
-```
-/                      Marketing landing page
-/login                 Sign in  (email · Google · GitHub · role picker)
-/signup                Create account (with live password-strength meter)
-
-/app                   Dashboard
-/app/analytics         Performance analytics
-/app/leaderboard       Global / university / team rankings
-/app/problems          Problem repository
-/app/sheets            Practice sheets
-/app/resources         Learning resources
-/app/teams             Team management
-/app/calendar          Schedule and reminders
-/app/settings          Account settings
-*                      404
-```
-
-Everything under `/app` sits behind `AppLayout`, which redirects to `/login` when
-signed out.
+| `docs/report/O1-Project-Report.pdf` | Project report (also `.docx`) |
+| `docs/report/O1-SQL-Queries.pdf` | Every SQL query in the project, with output |
+| `docs/lite/DB-Design-Lite.pdf` | Database design and normalisation |
+| `docs/lite/Explanation-Guide.pdf` | Simple explanation of the design, with viva questions |
+| `docs/lite/schema-lite.sql` | The schema (tables, trigger, views, index) |
+| `docs/DB-Design.pdf` | The earlier 20-table design, kept for reference |
 
 ## Project structure
 
 ```
-src/
-├── App.tsx                  Router — every route is declared here
-├── main.tsx                 Entry point
-├── index.css                Design tokens, .liquid-glass, .panel, animations
-│
-├── layouts/
-│   ├── AppLayout.tsx        Auth guard + sidebar/topbar shell for /app
-│   └── AuthLayout.tsx       Split-screen shell for login & signup
-│
-├── lib/
-│   ├── data.ts              ← All mock data and domain types. The backend seam.
-│   ├── auth.tsx             AuthProvider / useAuth (localStorage-backed stub)
-│   ├── nav.ts               Sidebar sections + per-role visibility
-│   └── utils.ts             cn() — clsx + tailwind-merge
-│
-├── components/
-│   ├── ui/                  shadcn/ui primitives (button, card, table, dialog, …)
-│   ├── layout/              Sidebar, Topbar, PageHeader
-│   ├── Brand.tsx            The O(1) wordmark
-│   ├── BrandIcons.tsx       GitHub & Google marks (see the gotcha below)
-│   ├── StatCard.tsx         The standard metric tile
-│   ├── RolePicker.tsx       Student / Mentor selector
-│   ├── OAuthButtons.tsx     Google + GitHub sign-in
-│   └── VideoBackground.tsx  Fullscreen looping hero video
-│
-└── pages/                   One file per route
+backend/                Flask API, plain SQL (see backend/README.md)
+├── app.py              app setup, routes, database errors as JSON
+├── db.py               connection, one transaction per request
+├── init_db.py          create / update / reset the database
+├── routes/             one file per feature (auth, problems, sheets, teams, ...)
+└── services/           Codeforces API calls and sync
+
+src/                    React frontend
+├── pages/              Dashboard, Leaderboard, Problems, Submissions, Sheets,
+│                       Team, Profile, Database, Landing, Login, Signup
+├── components/         shared pieces (team analytics, college input, sync button, ui/)
+└── lib/                API client, auth, formatting helpers
+
+docs/                   design documents, report and SQL reference
+archive/removed-ui/     pages removed from the earlier version
 ```
 
-## Design system
+## Notes
 
-The look is a near-black, violet-tinted dark theme: large rounded cards, generous
-padding, pill-shaped controls, violet as the primary accent and lime for positive
-series.
-
-**Everything is driven by HSL custom properties** declared in `src/index.css` and
-mapped to Tailwind in `tailwind.config.js`. Change a token there and it propagates
-across all 12 pages.
-
-```css
---background: 255 24% 4%;     /* near-black with a violet cast */
---card:       252 20% 8%;
---primary:    258 90% 66%;    /* violet */
---lime:        74 90% 62%;    /* positive / secondary series */
---easy / --medium / --hard    /* problem difficulty scale */
---chart-1 … --chart-5         /* chart series */
-```
-
-Conventions worth keeping if you extend this:
-
-- **Never hardcode a hex.** Use the token classes: `bg-card`, `text-muted-foreground`,
-  `text-primary`, `border-border`, `text-success`, `text-lime`, `bg-chart-4`, and so on.
-- **Active state is an inverted pill** — `bg-foreground text-background`. Inactive is
-  `text-muted-foreground hover:text-foreground`. This is used for the sidebar, tabs,
-  and every filter chip.
-- **Page skeleton** is always `<div className="space-y-6">` wrapping a `<PageHeader>`.
-  `PageHeader` renders its title in Instrument Serif for you.
-- **Typography** — Instrument Serif for display headings (applied inline via
-  `style={{ fontFamily: "'Instrument Serif', serif" }}`), Inter for everything else.
-
-## Working with the mock data
-
-`src/lib/data.ts` is the single source of truth for every entity on screen: users,
-problems, sheets, contests, teams, resources, calendar events, leaderboards, and all
-the chart series.
-
-It exports both the data and the TypeScript types (`Problem`, `Contest`, `Team`,
-`Role`, …), plus small formatters — `formatDate`, `formatDuration`, `compact`,
-`ratingColor`, `difficultyVariant`.
-
-The data is generated by a **seeded PRNG**, so it is identical on every reload.
-Charts, rankings and heatmaps do not shuffle between refreshes, which makes visual
-diffs and screenshots meaningful.
-
-To wire up a real backend, replace the exports in this one file with API calls. The
-pages import named exports and never construct core entities themselves, so the
-component layer should need little to no change.
-
-## Gotchas
-
-A few things that will bite you if you don't know them:
-
-**`lucide-react` is v1 and has no brand icons.** `Github`, `Twitter` and friends were
-removed. Importing `Github` fails the build. Use `GithubMark` / `GoogleMark` from
-`@/components/BrandIcons` instead.
-
-**Charts have animation disabled deliberately.** Every Recharts series carries
-`isAnimationActive={false}`. Recharts replays its mount animation on *every* re-render,
-so without this the charts visibly redraw each time you click a period toggle. Leave
-it off.
-
-**Unique gradient IDs per page.** SVG gradient IDs are global to the document. Each
-page prefixes its own (`analyticsRatingFill`, `dashboardRatingFill`).
-Reusing an ID makes one chart silently adopt another's fill.
-
-**TypeScript is strict about unused code.** `noUnusedLocals` and `noUnusedParameters`
-are on, so a leftover import fails `npm run build`. `verbatimModuleSyntax` is also on
-— import types with `import type { X }`.
-
-**`mx-auto` on a flex item doesn't do what you expect.** In a column-direction flex
-container, `margin-inline: auto` is a *cross-axis* margin. It absorbs the free space
-and cancels `align-items: stretch`, so the element shrink-wraps instead of filling.
-Pair it with `w-full`. This is what originally broke the landing page nav bar.
-
-## Project status
-
-| Area | State |
-| --- | --- |
-| UI for all 12 routes | ✅ Complete |
-| Design system & tokens | ✅ Complete |
-| Role-based navigation & guards | ✅ Complete (client-side) |
-| Filtering, sorting, tabs, dialogs | ✅ Interactive |
-| Backend / persistence | ❌ Not started |
-| Real authentication | ❌ Stub — `localStorage` flag only |
-| Judge integrations | ❌ Not started |
-
-**Do not ship the auth as-is.** `src/lib/auth.tsx` accepts any credentials and stores
-a plain flag in `localStorage`. It exists so the role-based UI can be demonstrated.
-Real sessions, password hashing, and server-side authorisation all still need building —
-in particular, the admin guard is a client-side render check and provides no actual
-security.
-
-### Roadmap
-
-- Backend API and persistence
-- Real authentication with OAuth for Google and GitHub
-- Judge integrations for Codeforces, CodeChef, LeetCode, AtCoder and GitHub, so
-  ratings and solved problems sync automatically
-- AI assistance for personalised recommendations and code explanation
-- Code splitting — the bundle is currently a single ~1.7 MB chunk (~460 kB gzipped);
-  route-level `React.lazy` is the obvious first cut
-
----
-
-<div align="center">
-<sub>Built for competitive programmers.</sub>
-</div>
+- Codeforces cannot be shown inside another website (it blocks framing), so problems
+  open in a new tab or a window beside the app.
+- The Codeforces API is called only when syncing, with a 2 second gap between calls.
+  The full problem list is cached for 6 hours for the sheet search.
+- Passwords are stored as scrypt hashes, and all SQL values are passed as parameters,
+  so SQL injection is not possible.
