@@ -1,8 +1,9 @@
+import { PixelMark } from '@/components/PaperBrand'
 import { cn } from '@/lib/utils'
 
 /**
- * O(1) wordmark. The mark is a violet-cast disc echoing the "O",
- * with the complexity notation set in the display serif.
+ * O(1) mark for the paper pages: the pixel-bitmap ring in black ink with a
+ * small bold "O(1)" wordmark. Same props as before so callers don't change.
  */
 export function Brand({
   className,
@@ -14,35 +15,23 @@ export function Brand({
   showWordmark?: boolean
 }) {
   const mark = {
-    sm: 'h-7 w-7',
-    md: 'h-9 w-9',
-    lg: 'h-11 w-11',
+    sm: 'h-6 w-6',
+    md: 'h-7 w-7',
+    lg: 'h-9 w-9',
   }[size]
 
   const text = {
-    sm: 'text-lg',
-    md: 'text-2xl',
-    lg: 'text-3xl',
+    sm: 'text-[11px]',
+    md: 'text-xs',
+    lg: 'text-sm',
   }[size]
 
   return (
-    <span className={cn('inline-flex items-center gap-2.5', className)}>
-      <span
-        className={cn(
-          'relative grid shrink-0 place-items-center rounded-full',
-          'bg-[radial-gradient(circle_at_30%_25%,hsl(var(--primary))_0%,hsl(258_90%_42%)_55%,hsl(255_40%_12%)_100%)]',
-          'shadow-[0_0_24px_-4px_hsl(var(--primary)/0.7)]',
-          mark
-        )}
-      >
-        <span className="absolute inset-[3px] rounded-full border border-white/25" />
-      </span>
+    <span className={cn('inline-flex items-center gap-2.5 text-foreground', className)}>
+      <PixelMark className={cn('shrink-0', mark)} />
       {showWordmark && (
-        <span
-          className={cn('leading-none tracking-tight text-foreground', text)}
-          style={{ fontFamily: "'Instrument Serif', serif" }}
-        >
-          O<span className="text-primary">(1)</span>
+        <span className={cn('font-bold leading-none tracking-tight text-foreground', text)}>
+          O(1)
         </span>
       )}
     </span>

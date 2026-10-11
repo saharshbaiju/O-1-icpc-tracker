@@ -47,12 +47,10 @@ import { Label } from '@/components/ui/label'
 import { useAuth } from '@/lib/auth'
 import {
   myTeam,
-  ratingColor,
   resources,
   teams,
   topicMastery,
 } from '@/lib/data'
-import { cn } from '@/lib/utils'
 
 const TEAM_ACTIVITY = [
   { id: 'ta-1', text: 'Ananya Ghosh solved Convex Hull Trick', meta: 'Codeforces · 2300', time: '32m ago' },
@@ -99,10 +97,6 @@ export default function Teams() {
 
       {/* -------------------------------------------------- My team hero */}
       <Card className="relative overflow-hidden p-8">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(700px_320px_at_10%_0%,hsl(var(--primary)/0.24),transparent_70%)]"
-        />
         <div className="relative">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -113,8 +107,7 @@ export default function Teams() {
                 <Badge variant="secondary">Since {myTeam.createdAt}</Badge>
               </div>
               <h2
-                className="mt-4 text-4xl leading-tight tracking-tight"
-                style={{ fontFamily: "'Instrument Serif', serif" }}
+                className="font-display mt-4 text-4xl"
               >
                 {myTeam.name}
               </h2>
@@ -128,7 +121,7 @@ export default function Teams() {
             </Button>
           </div>
 
-          <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/60 bg-border/60 sm:grid-cols-4">
+          <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-4">
             {[
               { label: 'National rank', value: `#${myTeam.rank}` },
               { label: 'Team rating', value: myTeam.rating },
@@ -148,7 +141,7 @@ export default function Teams() {
             {myTeam.members.map((m, i) => (
               <div
                 key={m.id}
-                className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card/70 p-4"
+                className="flex items-center gap-3 rounded-xl border border-border bg-card p-4"
               >
                 <div className="relative">
                   <img
@@ -157,7 +150,7 @@ export default function Teams() {
                     className="h-11 w-11 rounded-full bg-secondary"
                   />
                   {i === 0 && (
-                    <span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-warning text-background">
+                    <span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-foreground text-background">
                       <Crown className="h-3 w-3" />
                     </span>
                   )}
@@ -168,10 +161,7 @@ export default function Teams() {
                     {m.role}
                   </p>
                   <p
-                    className={cn(
-                      'mt-0.5 text-xs font-medium tabular-nums',
-                      ratingColor(m.rating)
-                    )}
+                    className="mt-0.5 text-xs font-medium tabular-nums text-foreground"
                   >
                     {m.rating}
                   </p>
@@ -199,7 +189,7 @@ export default function Teams() {
                     {role !== 'student' && (
                       <>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive focus:text-destructive">
+                        <DropdownMenuItem className="text-foreground">
                           <UserMinus className="h-4 w-4" /> Remove from team
                         </DropdownMenuItem>
                       </>
@@ -216,8 +206,8 @@ export default function Teams() {
       <div className="grid gap-5 lg:grid-cols-3">
         <Card className="p-6 lg:col-span-2">
           <div className="flex items-center gap-2">
-            <RadarIcon className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-medium">Team topic coverage</h2>
+            <RadarIcon className="h-4 w-4 text-foreground" />
+            <h2 className="paper-label text-muted-foreground">Team topic coverage</h2>
           </div>
           <p className="mt-1.5 text-xs text-muted-foreground">
             Combined strength across the three of you.
@@ -238,8 +228,8 @@ export default function Teams() {
                 />
                 <Radar
                   dataKey="team"
-                  stroke="hsl(var(--primary))"
-                  fill="hsl(var(--primary))"
+                  stroke="hsl(var(--foreground))"
+                  fill="hsl(var(--foreground))"
                   fillOpacity={0.28}
                   strokeWidth={2}
                 
@@ -249,10 +239,10 @@ export default function Teams() {
             </ResponsiveContainer>
           </div>
 
-          <div className="mt-2 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3">
+          <div className="mt-2 rounded-lg border border-border bg-secondary px-4 py-3">
             <p className="text-sm">
               Weakest areas:{' '}
-              <span className="font-medium text-warning">
+              <span className="font-medium">
                 {weakest.map((w) => w.topic).join(' and ')}
               </span>
             </p>
@@ -265,8 +255,8 @@ export default function Teams() {
 
         <Card className="p-6">
           <div className="flex items-center gap-2">
-            <Link2 className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-medium">Invite a teammate</h2>
+            <Link2 className="h-4 w-4 text-foreground" />
+            <h2 className="paper-label text-muted-foreground">Invite a teammate</h2>
           </div>
           <p className="mt-1.5 text-xs text-muted-foreground">
             Share this link — it expires in 7 days.
@@ -280,21 +270,21 @@ export default function Teams() {
             />
             <Button variant="secondary" size="icon" onClick={copyInvite}>
               {copied ? (
-                <Check className="h-4 w-4 text-success" />
+                <Check className="h-4 w-4" />
               ) : (
                 <Copy className="h-4 w-4" />
               )}
             </Button>
           </div>
           {copied && (
-            <p className="mt-2 text-xs text-success">Copied to clipboard</p>
+            <p className="mt-2 text-xs text-muted-foreground">Copied to clipboard</p>
           )}
 
-          <div className="mt-6 border-t border-border/50 pt-5">
-            <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <div className="mt-6 pt-5">
+            <h3 className="text-xs font-medium text-muted-foreground">
               Shared resources
             </h3>
-            <ul className="mt-3 divide-y divide-border/50">
+            <ul className="mt-3">
               {resources.slice(0, 4).map((r) => (
                 <li key={r.id} className="py-2.5">
                   <p className="truncate text-sm">{r.title}</p>
@@ -314,16 +304,16 @@ export default function Teams() {
       {/* -------------------------------------------------- Activity */}
       <Card className="p-6">
         <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-medium">Team activity</h2>
+          <Users className="h-4 w-4 text-foreground" />
+          <h2 className="paper-label text-muted-foreground">Team activity</h2>
         </div>
-        <ul className="mt-5 divide-y divide-border/50">
+        <ul className="mt-5">
           {TEAM_ACTIVITY.map((a) => (
             <li
               key={a.id}
               className="flex flex-wrap items-center gap-3 py-3 first:pt-0"
             >
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-foreground" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm">{a.text}</p>
                 <p className="truncate text-xs text-muted-foreground">{a.meta}</p>
@@ -339,7 +329,7 @@ export default function Teams() {
       {/* -------------------------------------------------- Browse teams */}
       <div>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-medium">Browse teams</h2>
+          <h2 className="paper-label text-muted-foreground">Browse teams</h2>
           <span className="text-xs text-muted-foreground">
             {teams.length - 1} teams recruiting
           </span>
@@ -351,7 +341,7 @@ export default function Teams() {
             .map((t) => (
               <Card key={t.id} className="flex flex-col p-6">
                 <div className="flex items-center justify-between">
-                  <Badge variant={t.rank <= 3 ? 'warning' : 'secondary'}>
+                  <Badge variant={t.rank <= 3 ? 'default' : 'outline'}>
                     Rank #{t.rank}
                   </Badge>
                   <span className="text-sm font-medium tabular-nums">
@@ -410,7 +400,7 @@ export default function Teams() {
             <Input
               id="join-code"
               placeholder="SEGF-4417"
-              className="font-mono uppercase"
+              className="font-mono"
             />
           </div>
           <DialogFooter>

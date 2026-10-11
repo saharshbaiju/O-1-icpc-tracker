@@ -42,11 +42,11 @@ const TYPE_STYLE: Record<
   CalendarEvent['type'],
   { chip: string; dot: string; label: string }
 > = {
-  contest: { chip: 'bg-primary/20 text-primary', dot: 'bg-primary', label: 'Contest' },
-  practice: { chip: 'bg-lime/20 text-lime', dot: 'bg-lime', label: 'Practice' },
-  deadline: { chip: 'bg-destructive/20 text-destructive', dot: 'bg-destructive', label: 'Deadline' },
-  session: { chip: 'bg-chart-3/20 text-chart-3', dot: 'bg-chart-3', label: 'Session' },
-  announcement: { chip: 'bg-warning/20 text-warning', dot: 'bg-warning', label: 'Announcement' },
+  contest: { chip: 'bg-foreground text-background', dot: 'bg-foreground', label: 'Contest' },
+  practice: { chip: 'border border-border bg-card text-foreground', dot: 'bg-chart-3', label: 'Practice' },
+  deadline: { chip: 'bg-chart-2 text-background', dot: 'bg-chart-2', label: 'Deadline' },
+  session: { chip: 'bg-secondary text-foreground', dot: 'bg-chart-4', label: 'Session' },
+  announcement: { chip: 'border border-dashed border-foreground bg-card text-foreground', dot: 'bg-chart-5', label: 'Announcement' },
 }
 
 const REMINDERS = [
@@ -120,7 +120,7 @@ export default function Calendar() {
         description="Contest schedules, practice sessions, assignment deadlines and announcements on a single timeline."
         actions={
           <>
-            <div className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-card p-1">
+            <div className="inline-flex items-center gap-1 rounded-full bg-card p-1">
               {VIEWS.map((v) => (
                 <button
                   key={v}
@@ -148,8 +148,8 @@ export default function Calendar() {
         <Card className="p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-medium">July 2026</h2>
+              <CalendarDays className="h-4 w-4 text-foreground" />
+              <h2 className="paper-label text-muted-foreground">July 2026</h2>
             </div>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon-sm" aria-label="Previous month">
@@ -168,7 +168,7 @@ export default function Calendar() {
             {WEEKDAYS.map((d) => (
               <div
                 key={d}
-                className="pb-2 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
+                className="pb-2 text-center text-[11px] font-medium text-muted-foreground"
               >
                 {d}
               </div>
@@ -190,16 +190,15 @@ export default function Calendar() {
                   key={iso}
                   onClick={() => setSelected(iso)}
                   className={cn(
-                    'min-h-[92px] rounded-xl border border-border/50 p-2 text-left transition-colors',
-                    'hover:border-border hover:bg-secondary/40',
-                    isToday && 'bg-primary/10 ring-1 ring-primary',
-                    isSelected && !isToday && 'bg-secondary/60'
+                    'min-h-[92px] rounded-lg border border-border p-2 text-left transition-colors hover:bg-secondary',
+                    isToday && 'border-foreground bg-foreground text-background hover:bg-foreground',
+                    isSelected && !isToday && 'bg-secondary'
                   )}
                 >
                   <span
                     className={cn(
                       'text-xs tabular-nums',
-                      isToday ? 'font-medium text-primary' : 'text-muted-foreground'
+                      isToday ? 'font-medium text-background' : 'text-muted-foreground'
                     )}
                   >
                     {day}
@@ -229,7 +228,7 @@ export default function Calendar() {
             })}
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-border/50 pt-4">
+          <div className="mt-6 flex flex-wrap items-center gap-4 pt-4">
             {Object.entries(TYPE_STYLE).map(([key, s]) => (
               <span
                 key={key}
@@ -246,8 +245,8 @@ export default function Calendar() {
         <div className="space-y-5">
           <Card className="p-6">
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-medium">
+              <Clock className="h-4 w-4 text-foreground" />
+              <h2 className="paper-label text-muted-foreground">
                 {new Date(`${selected}T00:00:00`).toLocaleDateString('en-GB', {
                   weekday: 'long',
                   day: 'numeric',
@@ -261,7 +260,7 @@ export default function Calendar() {
                 Nothing scheduled. A good day for a virtual round.
               </p>
             ) : (
-              <ul className="mt-5 divide-y divide-border/50">
+              <ul className="mt-5">
                 {selectedEvents.map((e) => (
                   <li key={e.id} className="py-3 first:pt-0">
                     <div className="flex items-start justify-between gap-3">
@@ -288,20 +287,15 @@ export default function Calendar() {
 
           <Card className="p-6">
             <div className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-medium">Upcoming</h2>
+              <CalendarDays className="h-4 w-4 text-foreground" />
+              <h2 className="paper-label text-muted-foreground">Upcoming</h2>
             </div>
             <ul className="mt-5 space-y-3">
               {upcoming.map((e) => (
                 <li
                   key={e.id}
                   className={cn(
-                    'rounded-xl border-l-2 bg-secondary/30 px-3 py-2.5',
-                    e.type === 'contest' && 'border-primary',
-                    e.type === 'practice' && 'border-lime',
-                    e.type === 'deadline' && 'border-destructive',
-                    e.type === 'session' && 'border-chart-3',
-                    e.type === 'announcement' && 'border-warning'
+                    'rounded-xl bg-secondary px-3 py-2.5'
                   )}
                 >
                   <p className="truncate text-sm">{e.title}</p>
@@ -319,10 +313,10 @@ export default function Calendar() {
 
           <Card className="p-6">
             <div className="flex items-center gap-2">
-              <Bell className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-medium">Reminders</h2>
+              <Bell className="h-4 w-4 text-foreground" />
+              <h2 className="paper-label text-muted-foreground">Reminders</h2>
             </div>
-            <ul className="mt-4 divide-y divide-border/50">
+            <ul className="mt-4">
               {reminders.map((r) => (
                 <li key={r.id} className="flex items-center gap-3 py-3.5">
                   <div className="min-w-0 flex-1">
@@ -344,15 +338,15 @@ export default function Calendar() {
 
       {/* ---------------------------------------------- Week strip */}
       <Card className="p-6">
-        <h2 className="text-sm font-medium">This week at a glance</h2>
+        <h2 className="paper-label text-muted-foreground">This week at a glance</h2>
         <div className="mt-5 grid grid-cols-4 gap-3 sm:grid-cols-7">
           {weekAtAGlance.map((d) => (
             <button
               key={d.date}
               onClick={() => setSelected(d.date)}
               className={cn(
-                'rounded-2xl border border-border/50 p-4 text-left transition-colors hover:bg-secondary/40',
-                selected === d.date && 'bg-secondary/60'
+                'rounded-lg border border-border p-4 text-left transition-colors hover:bg-secondary',
+                selected === d.date && 'bg-secondary'
               )}
             >
               <p className="text-xs text-muted-foreground">{d.label}</p>
@@ -362,7 +356,7 @@ export default function Calendar() {
               <div
                 className={cn(
                   'mt-3 h-1 rounded-full',
-                  d.count > 0 ? 'bg-primary' : 'bg-secondary'
+                  d.count > 0 ? 'bg-foreground' : 'bg-border'
                 )}
                 style={{ width: `${Math.min(100, 25 + d.count * 25)}%` }}
               />

@@ -19,6 +19,7 @@ const ROLES: { value: Role; label: string; hint: string; icon: typeof Graduation
     },
   ]
 
+/* The chosen role is a black tile; the other is a thin-bordered white sheet. */
 export function RolePicker({
   value,
   onChange,
@@ -37,20 +38,25 @@ export function RolePicker({
             onClick={() => onChange(r.value)}
             aria-pressed={active}
             className={cn(
-              'rounded-2xl border p-3 text-left transition-all',
+              'rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               active
-                ? 'border-primary bg-primary/10 ring-2 ring-primary/25'
-                : 'border-border bg-secondary/30 hover:border-border hover:bg-secondary/60'
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border bg-card hover:bg-secondary'
             )}
           >
             <r.icon
               className={cn(
-                'h-[18px] w-[18px]',
-                active ? 'text-primary' : 'text-muted-foreground'
+                'h-4 w-4',
+                active ? 'text-primary-foreground' : 'text-muted-foreground'
               )}
             />
             <p className="mt-2 text-sm font-medium">{r.label}</p>
-            <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+            <p
+              className={cn(
+                'mt-0.5 text-[11px] leading-snug',
+                active ? 'text-primary-foreground/70' : 'text-muted-foreground'
+              )}
+            >
               {r.hint}
             </p>
           </button>

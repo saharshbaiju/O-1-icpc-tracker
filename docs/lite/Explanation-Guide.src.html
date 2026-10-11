@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>O(1) Lite — Explanation Guide</title>
+<style>
+  @page { size: A4; margin: 2cm; }
+  body { font-family: "Liberation Sans", Arial, sans-serif; font-size: 11pt; line-height: 1.4; color: #000; }
+  h1 { font-size: 18pt; margin: 0 0 4pt; }
+  h2 { font-size: 14pt; margin: 20pt 0 6pt; border-bottom: 1px solid #000; }
+  h3 { font-size: 12pt; margin: 14pt 0 4pt; }
+  p  { margin: 0 0 7pt; }
+  .sub { font-size: 11pt; color: #444; margin-bottom: 14pt; }
+  table { border-collapse: collapse; margin: 6pt 0 10pt; width: 100%; }
+  th, td { border: 1px solid #000; padding: 3pt 5pt; vertical-align: top; font-size: 10pt; }
+  th { background: #d9d9d9; text-align: left; }
+  code, .fd { font-family: "Liberation Mono", monospace; font-size: 10pt; }
+  .say { border-left: 4px solid #000; background: #f0f0f0; padding: 4pt 8pt; margin: 6pt 0; font-style: italic; }
+  .trap { border-left: 4px solid #999; padding: 2pt 8pt; margin: 6pt 0; font-size: 10pt; }
+  .brk { page-break-before: always; }
+  ul, ol { margin: 2pt 0 8pt; }
+  li { margin-bottom: 2pt; }
+  img { display: block; margin: 6pt auto; }
+</style>
+</head>
+<body>
+
+<h1>O(1) Lite — Explanation Guide</h1>
+<p class="sub">How to explain the database design, concept by concept, for the DBMS project
+evaluation and viva. Read this together with <code>DB-Design-Lite.pdf</code> (the formal
+submission); section numbers like §3.4.6 point into that document.</p>
+
+<h2>1. The project in 60 seconds</h2>
+<div class="say">
+"Our college ICPC teams used a spreadsheet to track who solved which Codeforces problem.
+Every row repeated the student's details and the problem's details, so it had insertion,
+update and deletion anomalies. We took that spreadsheet as our starting relation, found its
+functional dependencies, computed the keys with attribute closure, reduced the FDs to a
+minimal cover, and normalised it to 3NF — actually BCNF. We proved the decomposition is
+lossless with the chase test and dependency preserving. The result is nine tables in
+PostgreSQL with constraints, a trigger and views."
+</div>
+
+<h2>2. The nine tables in one line each</h2>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:20%">Table</th><th style="width:30%">Key</th><th>What it stores / why it exists</th></tr>
+  <tr><td>University</td><td>univ_id</td><td>University name and city — separated to remove the transitive dependency user → univ_id → univ_name.</td></tr>
+  <tr><td>Team</td><td>team_id</td><td>ICPC team name — separated to remove user → team_id → team_name.</td></tr>
+  <tr><td>User</td><td>user_id (also email)</td><td>Students. team_id is a nullable FK (a student is in at most one team).</td></tr>
+  <tr><td>Topic</td><td>topic_id</td><td>Topic names (DP, Graphs…), typed once.</td></tr>
+  <tr><td>Problem</td><td>problem_code</td><td>Codeforces problem, title, rating. Separated because of the partial dependency problem_code → title, rating.</td></tr>
+  <tr><td>Problem_Topic</td><td>(problem_code, topic_id)</td><td>Which topics a problem has — this is how we fixed the 1NF violation (topics was a list).</td></tr>
+  <tr><td>Submission</td><td>(user_id, problem_code, submitted_at)</td><td>Every attempt with its verdict. A <b>weak entity</b> in the ER diagram.</td></tr>
+  <tr><td>Sheet</td><td>sheet_id</td><td>A team's practice list, with a deadline.</td></tr>
+  <tr><td>Sheet_Problem</td><td>(sheet_id, problem_code)</td><td>Problems in a sheet, in order. Has a second candidate key (sheet_id, position).</td></tr>
+</table>
+<p>Plus three <b>views</b> (difficulty band, leaderboard, sheet progress) and one <b>trigger</b> (max 3 members per team).</p>
+
+<h2>2b. "Why a database? Can't you just call the Codeforces API?"</h2>
+<p>This is the most likely first question. The short answer:</p>
+<div class="say">"The API gives one student's raw submissions. Teams, sheets, topics and universities
+are our own data, which no API has. And the leaderboard and team progress need many students'
+data joined together, which is a SQL query, not 300 API calls."</div>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:26%">Need</th><th style="width:37%">With only API calls</th><th>With our database</th></tr>
+  <tr><td>Teams, sheets, topics, universities</td><td>Impossible — Codeforces doesn't know about them</td><td>Stored in our tables</td></tr>
+  <tr><td>Leaderboard of 300 students</td><td>300 API calls on every page load, and the API is rate-limited</td><td>One GROUP BY query (v_leaderboard)</td></tr>
+  <tr><td>Team progress on a sheet</td><td>Call the API for each member, then match problems by hand in code</td><td>One JOIN (v_sheet_progress)</td></tr>
+  <tr><td>"Team of max 3", "no duplicate problem in a sheet"</td><td>No guarantee; any bug can break it</td><td>Trigger and UNIQUE constraint enforce it</td></tr>
+  <tr><td>Codeforces is down</td><td>App is down</td><td>App still works with stored data</td></tr>
+</table>
+<p>The API is only the <b>input</b> for one table (Submission, filled by a sync job). Everything else, including every query the app runs, is DBMS.</p>
+
+<h2>3. Suggested presentation flow (≈10 minutes)</h2>
+<ol>
+  <li><b>Problem statement</b> (1 min) — the spreadsheet and its pain.</li>
+  <li><b>ER diagram</b> (2 min) — entities, the weak entity Submission, cardinalities, total participation, derived attribute.</li>
+  <li><b>Anomalies</b> (1 min) — show the 5-row spreadsheet and point at one example of each anomaly.</li>
+  <li><b>FDs → closure → keys</b> (2 min) — list F, compute {U,P,S}<sup>+</sup> live on the board.</li>
+  <li><b>Minimal cover</b> (1 min) — the 3 steps; mention it is not unique.</li>
+  <li><b>1NF → 2NF → 3NF</b> (2 min) — one violation and one fix at each step.</li>
+  <li><b>Lossless + dependency preserving</b> (1 min) — chase table, and the spurious-tuple counter-example.</li>
+  <li><b>Live demo</b> — run a query or two on PostgreSQL and try to add a 4th team member (the trigger rejects it).</li>
+</ol>
+<p>If you are presenting as a group, split it as 1–2 / 3–5 / 6–7 / 8 so each person owns a part.</p>
+
+<h2 class="brk">4. Concepts, one by one</h2>
+<p>For each concept: what it means in plain words, where it shows up in our project, and a line to say in the viva.</p>
+
+<h3>4.1 Keys</h3>
+<ul>
+  <li><b>Super key</b> — any set of attributes that uniquely identifies a row. (user_id, name) is one.</li>
+  <li><b>Candidate key</b> — a <i>minimal</i> super key: remove any attribute and it stops being unique. User has two: user_id and email.</li>
+  <li><b>Primary key</b> — the candidate key we pick. <b>Alternate key</b> — the ones we did not pick (email, enforced with UNIQUE).</li>
+  <li><b>Composite key</b> — a key of more than one attribute: Submission's (user_id, problem_code, submitted_at).</li>
+  <li><b>Foreign key</b> — a column that must match a key in another table: User.univ_id → University.</li>
+</ul>
+<div class="say">"cf_handle is UNIQUE, but it is not a candidate key, because it can be NULL — a key must identify every row."</div>
+
+<h3>4.2 ER model</h3>
+<ul>
+  <li><b>Weak entity</b> — cannot be identified by its own attributes. A Submission is only identified by <i>which user</i>, <i>which problem</i> and <i>when</i> (partial key: submitted_at). Drawn as a double rectangle, with double-diamond identifying relationships.</li>
+  <li><b>Cardinality</b> — 1:N (a university has many users), M:N (problems ↔ topics, sheets ↔ problems).</li>
+  <li><b>Participation</b> — total (double line): every sheet must belong to a team; partial: a student need not be in a team.</li>
+  <li><b>Derived attribute</b> — difficulty is computed from rating, so it is dashed in the diagram and is a view, not a column.</li>
+  <li><b>Mapping to tables</b> — 1:N becomes a foreign key on the N side; M:N becomes a junction table (Problem_Topic, Sheet_Problem).</li>
+</ul>
+
+<h3>4.3 Anomalies — why normalise at all</h3>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:18%">Anomaly</th><th>Example in the spreadsheet</th></tr>
+  <tr><td>Insertion</td><td>Can't add a new problem until somebody submits it.</td></tr>
+  <tr><td>Update</td><td>Saharsh's e-mail is on 3 rows; change one, forget the others → inconsistent.</td></tr>
+  <tr><td>Deletion</td><td>Delete Anu's only attempt at 1547G → we lose that 1547G exists at all.</td></tr>
+</table>
+
+<h3>4.4 Functional dependency (FD)</h3>
+<p>
+X → Y means "if two rows have the same X, they must have the same Y". user_id → name: the same
+user id can never have two names. <b>Trivial</b>: the right side is already in the left (UM → U). Our letters:
+U user_id, N name, M email, I univ_id, J univ_name, G team_id, K team_name, P problem_code,
+T title, R rating, S submitted_at, V verdict, L language.
+</p>
+<p><b>Armstrong's axioms</b> (memorise the three, know the three derived ones):</p>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:25%">Rule</th><th style="width:35%">Statement</th><th>Our example</th></tr>
+  <tr><td>Reflexivity</td><td>Y ⊆ X ⇒ X → Y</td><td class="fd">UP → P</td></tr>
+  <tr><td>Augmentation</td><td>X → Y ⇒ XZ → YZ</td><td class="fd">P → T ⇒ PS → TS</td></tr>
+  <tr><td>Transitivity</td><td>X → Y, Y → Z ⇒ X → Z</td><td class="fd">U → I, I → J ⇒ U → J</td></tr>
+  <tr><td>Union</td><td>X → Y, X → Z ⇒ X → YZ</td><td class="fd">P → T, P → R ⇒ P → TR</td></tr>
+  <tr><td>Decomposition</td><td>X → YZ ⇒ X → Y</td><td class="fd">U → NMIG ⇒ U → N</td></tr>
+  <tr><td>Pseudo-transitivity</td><td>X → Y, WY → Z ⇒ WX → Z</td><td class="fd">M → U, UPS → VL ⇒ MPS → VL</td></tr>
+</table>
+
+<h3>4.5 Attribute closure X<sup>+</sup></h3>
+<p>"Everything you can reach from X." Start with X, keep firing any FD whose left side you already have, stop when nothing new appears.</p>
+<p class="fd">{U,P,S}<sup>+</sup>: UPS → +NMIG → +J → +K → +TR → +VL = all 13 ⇒ super key.</p>
+<p><b>Uses:</b> (1) find keys, (2) test if an FD holds (X → Y holds iff Y ⊆ X<sup>+</sup>), (3) minimal cover steps.</p>
+<div class="say">"Shortcut to find keys: P and S never appear on the right side of any FD, so they must be in every key. {P,S}<sup>+</sup> is only {P,S,T,R}, so we add U or M — giving the two candidate keys {U,P,S} and {M,P,S}."</div>
+
+<h3>4.6 Closure of FDs F<sup>+</sup></h3>
+<p>
+F<sup>+</sup> is every FD that follows from F. It is huge, so we never write it out. We show
+members by deriving them with Armstrong's axioms (U → J, M → K) and we test membership with
+attribute closure ({I}<sup>+</sup> = {I, J}, so I → U is <i>not</i> in F<sup>+</sup>).
+Two FD sets are <b>equivalent</b> if they have the same closure — that is what makes the minimal cover "the same rules, fewer of them".
+</p>
+
+<h3>4.7 Minimal cover</h3>
+<ol>
+  <li><b>Split</b> right sides: U → NMIG becomes U → N, U → M, U → I, U → G.</li>
+  <li><b>Extraneous left attributes</b>: in UM → N, {U}<sup>+</sup> already has N, so M is extra → U → N. In UPS → T, {P}<sup>+</sup> has T → P → T.</li>
+  <li><b>Redundant FDs</b>: U → J can be derived (U → I → J) without itself → delete.</li>
+</ol>
+<p class="fd">F<sub>c</sub> = { U → NMIG, M → U, I → J, G → K, P → TR, UPS → VL }</p>
+<div class="trap"><b>Trap question:</b> "Is the minimal cover unique?" — No. In UM → N both U and M are individually extraneous; removing U first gives M → N instead of U → N. Both are valid minimal covers.</div>
+
+<h3 class="brk">4.8 Normal forms</h3>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:10%">NF</th><th style="width:33%">Rule (simple words)</th><th style="width:28%">Violation in our data</th><th>Fix</th></tr>
+  <tr><td>1NF</td><td>Every cell has one atomic value.</td><td>topics = "DP, Graphs"</td><td>Problem_Topic table, one row per pair</td></tr>
+  <tr><td>2NF</td><td>1NF + no non-prime attribute depends on <i>part</i> of a key.</td><td>U → name (U is part of key UPS); P → title</td><td>Split out USER_INFO (U<sup>+</sup>) and PROBLEM (P<sup>+</sup>)</td></tr>
+  <tr><td>3NF</td><td>2NF + no non-prime attribute depends on another non-key attribute (no transitive dependency). Formally: for X → A, X is a super key or A is prime.</td><td>U → I → J, U → G → K</td><td>Split out UNIVERSITY(I,J) and TEAM(G,K)</td></tr>
+  <tr><td>BCNF</td><td>For every X → A, X is a super key (no exceptions).</td><td>none</td><td>already satisfied</td></tr>
+</table>
+<div class="say">"M → U does not break 2NF even though M is part of the key {M,P,S}, because U is a prime attribute. 2NF and 3NF only care about non-prime attributes."</div>
+<div class="say">"The 3NF synthesis algorithm on our minimal cover gives exactly the same five tables, and synthesis is guaranteed lossless and dependency preserving — so our two proofs are a cross-check."</div>
+
+<h3>4.9 Lossless join</h3>
+<p>Splitting a table is safe only if joining the pieces gives back exactly the original — no missing rows and no fake (<b>spurious</b>) rows.</p>
+<ul>
+  <li><b>Two-way test:</b> the common columns must be a key of at least one piece. USER_INFO and the rest share U, and U is the key of USER_INFO ✓.</li>
+  <li><b>Chase / tableau test</b> (for many pieces): a table with one row per relation, <b>a</b> where the relation has the column. Apply FDs to equalise values. A row that becomes all <b>a</b> ⇒ lossless. Our SUBMISSION row becomes all <b>a</b> (§3.4.10).</li>
+  <li><b>Counter-example to show:</b> split Submission into (user, problem) and (problem, time, verdict, lang). Joining back invents "Saharsh submitted 455A at 19:05 in Python" — he didn't.</li>
+</ul>
+
+<h3>4.10 Dependency preservation</h3>
+<p>
+After splitting, can each FD still be checked inside one table? Ours: U → NMIG and M → U live
+in User, I → J in University, G → K in Team, P → TR in Problem, UPS → VL in Submission. All
+preserved ✓.
+</p>
+<p>
+<b>Counter-example:</b> store univ_name against each user in a separate table Y(U, J). Now
+I → J is in no table; the algorithm gives result = {I} and never reaches J ⇒ not preserved.
+The DB could hold two names for the same university id.
+</p>
+<div class="trap"><b>Trap question:</b> "Is every BCNF decomposition dependency preserving?" — No. 3NF can always be both lossless and dependency preserving; BCNF is always achievable losslessly but sometimes loses a dependency. In our case we got lucky: BCNF and preserving.</div>
+
+<h3>4.11 Constraints, trigger, views, SQL</h3>
+<ul>
+  <li><b>Domain constraints</b> — CHECK (rating BETWEEN 800 AND 3500), verdict must be one of OK, WRONG_ANSWER, ….</li>
+  <li><b>Entity integrity</b> — primary keys are NOT NULL and unique. <b>Referential integrity</b> — foreign keys; ON DELETE CASCADE removes a deleted user's submissions.</li>
+  <li><b>Trigger</b> — <code>team_size_check</code> raises an error on a fourth team member. A CHECK constraint cannot do this because it would have to count other rows.</li>
+  <li><b>Views</b> — v_leaderboard, v_sheet_progress, v_problem_difficulty. Derived data is computed, never stored, so it can never go out of date.</li>
+  <li><b>Index</b> — <code>university_name_trgm</code> is a GIN trigram index (pg_trgm). Sign-up uses <code>similarity()</code> on it to suggest "Amrita Vishwa Vidyapeetham" when someone types "amritha", so the same college is not inserted twice.</li>
+  <li><b>Team analytics</b> — uses a CTE (<code>WITH first_solves AS …</code>), window functions, and the "gaps and islands" trick for streaks: for consecutive active days, <code>day − row_number()</code> is constant, so grouping by it gives each unbroken streak.</li>
+  <li><b>Queries</b> in the appendix show JOIN, LEFT JOIN, GROUP BY / HAVING, NOT EXISTS subquery, M:N through a junction table, and a window function (rank).</li>
+</ul>
+
+<h2 class="brk">5. Viva questions with answers</h2>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:42%">Question</th><th>Answer</th></tr>
+  <tr><td>Why not just keep one big table?</td><td>Redundancy causes insertion, update and deletion anomalies (give the spreadsheet examples).</td></tr>
+  <tr><td>What are the candidate keys of the practice log?</td><td>{user_id, problem_code, submitted_at} and {email, problem_code, submitted_at}.</td></tr>
+  <tr><td>How did you find them?</td><td>Attribute closure. P and S are never on a right side so they're in every key; adding U or M makes the closure all attributes, and no smaller set works.</td></tr>
+  <tr><td>What are prime attributes here?</td><td>U, M, P, S — those in some candidate key.</td></tr>
+  <tr><td>Difference between 2NF and 3NF?</td><td>2NF removes partial dependencies (on part of a key); 3NF removes transitive dependencies (non-key → non-key).</td></tr>
+  <tr><td>Difference between 3NF and BCNF?</td><td>3NF allows X → A when A is prime even if X is not a super key; BCNF does not. All our tables are BCNF.</td></tr>
+  <tr><td>Show a transitive dependency.</td><td>user_id → univ_id → univ_name.</td></tr>
+  <tr><td>Show a partial dependency.</td><td>problem_code → title, where the key is (user_id, problem_code, submitted_at).</td></tr>
+  <tr><td>What is an extraneous attribute?</td><td>A left-side attribute you can drop without changing the closure: M in UM → N.</td></tr>
+  <tr><td>How do you know a decomposition is lossless?</td><td>Common attributes are a key of one side, or the chase produces an all-a row.</td></tr>
+  <tr><td>What is a spurious tuple?</td><td>A fake row produced by joining a lossy decomposition.</td></tr>
+  <tr><td>Why is Submission a weak entity?</td><td>It has no identifier of its own; it's identified by its user and problem plus submitted_at (partial key).</td></tr>
+  <tr><td>Why is difficulty not a column?</td><td>It is derived from rating; storing it adds the transitive FD rating → difficulty and can go stale. It's a view.</td></tr>
+  <tr><td>Why a trigger for team size?</td><td>The rule involves counting other rows, which a CHECK constraint cannot do.</td></tr>
+  <tr><td>Why is team_id in User and not a separate membership table?</td><td>A student is in at most one team, so it is an N:1 relationship → foreign key on the N side; nullable because participation is partial.</td></tr>
+  <tr><td>Why use a DBMS if Codeforces has an API?</td><td>The API only gives raw submissions per handle. Teams, sheets, topics and universities are our own data; leaderboard and progress need joins across many users; constraints and the trigger keep the data valid. The API just feeds the Submission table.</td></tr>
+  <tr><td>How is the streak calculated?</td><td>Gaps and islands: number each active day with row_number(); for consecutive days, day − row_number is the same, so GROUP BY that value gives each streak and count(*) its length.</td></tr>
+  <tr><td>Why store cf_rating if derived values are not stored?</td><td>It is not derivable from our tables; it comes from Codeforces' contest history. It is a snapshot that depends only on user_id, so the table stays in BCNF.</td></tr>
+  <tr><td>What is the trigram index for?</td><td>Fuzzy "did you mean" college search. similarity() compares names by shared 3-letter chunks, and the GIN index makes it fast. It stops duplicate colleges like "Amrita" and "Amritha".</td></tr>
+  <tr><td>Why did you reduce from the full design?</td><td>The 20-table version had many tables that repeated the same concepts; nine tables cover every concept and are easier to verify.</td></tr>
+</table>
+
+<h2>6. One-page cheat sheet</h2>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:28%">Item</th><th>Value</th></tr>
+  <tr><td>Universal relation</td><td class="fd">PRACTICE_LOG(U N M I J G K P T R S V L)</td></tr>
+  <tr><td>Given F</td><td class="fd">U→NMIG, M→U, I→J, G→K, P→TR, UPS→VL, UM→N, U→J, UPS→T</td></tr>
+  <tr><td>Minimal cover</td><td class="fd">U→NMIG, M→U, I→J, G→K, P→TR, UPS→VL</td></tr>
+  <tr><td>Candidate keys</td><td class="fd">{U,P,S}, {M,P,S}</td></tr>
+  <tr><td>1NF fix</td><td>topics list → Problem_Topic</td></tr>
+  <tr><td>2NF split</td><td class="fd">USER_INFO(U,N,M,I,J,G,K), PROBLEM(P,T,R), SUBMISSION(U,P,S,V,L)</td></tr>
+  <tr><td>3NF split</td><td class="fd">USER(U,N,M,I,G), UNIVERSITY(I,J), TEAM(G,K)</td></tr>
+  <tr><td>Lossless?</td><td>Yes — chase gives all-a SUBMISSION row</td></tr>
+  <tr><td>Dependency preserving?</td><td>Yes — every FD of F<sub>c</sub> sits in one table</td></tr>
+  <tr><td>Final normal form</td><td>BCNF (all 9 tables)</td></tr>
+</table>
+
+<h2>7. Files</h2>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:32%">File (docs/lite/)</th><th>Purpose</th></tr>
+  <tr><td>DB-Design-Lite.pdf / .docx</td><td>The formal design document to submit.</td></tr>
+  <tr><td>Explanation-Guide.pdf / .docx</td><td>This guide.</td></tr>
+  <tr><td>schema-lite.sql</td><td>Tables, trigger and views (PostgreSQL).</td></tr>
+  <tr><td>seed-lite.sql</td><td>Sample data used in all examples.</td></tr>
+  <tr><td>queries-lite.sql</td><td>Demo queries for the evaluation.</td></tr>
+  <tr><td>er-lite.dot / .png / .svg</td><td>ER diagram source and renders.</td></tr>
+  <tr><td>build.sh</td><td>Rebuilds the PDFs and DOCX files.</td></tr>
+</table>
+<p>Demo commands: <code>psql -d o1 -f schema-lite.sql -f seed-lite.sql -f queries-lite.sql</code>.
+The original full design in <code>docs/</code> is unchanged.</p>
+
+</body>
+</html>

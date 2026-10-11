@@ -70,9 +70,9 @@ const NOTIFY_ROWS = [
 ]
 
 const THEMES = [
-  { key: 'dark', label: 'Dark', swatch: 'bg-[hsl(255_24%_4%)]' },
-  { key: 'violet', label: 'Midnight violet', swatch: 'bg-[hsl(258_60%_12%)]' },
-  { key: 'system', label: 'System', swatch: 'bg-gradient-to-br from-[hsl(255_24%_4%)] to-[hsl(0_0%_85%)]' },
+  { key: 'paper', label: 'Paper', swatch: 'bg-background' },
+  { key: 'ink', label: 'Ink', swatch: 'bg-foreground' },
+  { key: 'system', label: 'System', swatch: 'bg-secondary' },
 ]
 
 const CONNECTIONS = [
@@ -91,7 +91,7 @@ export default function Settings() {
   const [section, setSection] = useState<SectionKey>('profile')
   const [saved, setSaved] = useState(false)
   const [bio, setBio] = useState(user?.bio ?? currentUser.bio)
-  const [theme, setTheme] = useState('dark')
+  const [theme, setTheme] = useState('paper')
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [confirmText, setConfirmText] = useState('')
   const [channels, setChannels] = useState<Record<string, string[]>>(() =>
@@ -126,7 +126,7 @@ export default function Settings() {
           <Button size="pill" onClick={save} variant={saved ? 'secondary' : 'default'}>
             {saved ? (
               <>
-                <Check className="h-4 w-4 text-success" /> Saved
+                <Check className="h-4 w-4" /> Saved
               </>
             ) : (
               'Save changes'
@@ -147,8 +147,8 @@ export default function Settings() {
                   'flex w-full items-center gap-3 rounded-full px-3.5 py-2.5 text-sm transition-colors',
                   section === s.key
                     ? 'bg-foreground font-medium text-background'
-                    : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
-                  s.key === 'danger' && section !== s.key && 'text-destructive/80'
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+                  s.key === 'danger' && section !== s.key && 'text-foreground'
                 )}
               >
                 <s.icon className="h-[18px] w-[18px]" />
@@ -163,8 +163,8 @@ export default function Settings() {
           {section === 'profile' && (
             <Card className="p-6">
               <div className="flex items-center gap-2">
-                <UserRound className="h-4 w-4 text-primary" />
-                <h2 className="text-sm font-medium">Profile</h2>
+                <UserRound className="h-4 w-4 text-foreground" />
+                <h2 className="paper-label text-muted-foreground">Profile</h2>
               </div>
 
               <div className="mt-6 flex flex-wrap items-center gap-4">
@@ -249,7 +249,7 @@ export default function Settings() {
                   className={cn(
                     'text-right text-xs',
                     bio.length > BIO_LIMIT - 40
-                      ? 'text-warning'
+                      ? 'text-foreground'
                       : 'text-muted-foreground'
                   )}
                 >
@@ -263,8 +263,8 @@ export default function Settings() {
             <>
               <Card className="p-6">
                 <div className="flex items-center gap-2">
-                  <Lock className="h-4 w-4 text-primary" />
-                  <h2 className="text-sm font-medium">Change password</h2>
+                  <Lock className="h-4 w-4 text-foreground" />
+                  <h2 className="paper-label text-muted-foreground">Change password</h2>
                 </div>
                 <div className="mt-6 grid gap-4 sm:grid-cols-3">
                   <div className="grid gap-2">
@@ -281,7 +281,7 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <div className="mt-6 flex items-center justify-between border-t border-border/50 pt-5">
+                <div className="mt-6 flex items-center justify-between pt-5">
                   <div>
                     <p className="text-sm">Two-factor authentication</p>
                     <p className="text-xs text-muted-foreground">
@@ -293,14 +293,14 @@ export default function Settings() {
               </Card>
 
               <Card className="p-6">
-                <h2 className="text-sm font-medium">Active sessions</h2>
-                <ul className="mt-4 divide-y divide-border/50">
+                <h2 className="paper-label text-muted-foreground">Active sessions</h2>
+                <ul className="mt-4">
                   {SESSIONS.map((s) => (
                     <li key={s.id} className="flex flex-wrap items-center gap-3 py-4">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <p className="truncate text-sm">{s.device}</p>
-                          {s.current && <Badge variant="success">This device</Badge>}
+                          {s.current && <Badge variant="outline">This device</Badge>}
                         </div>
                         <p className="truncate text-xs text-muted-foreground">
                           {s.location} · {s.last}
@@ -322,8 +322,8 @@ export default function Settings() {
             <Card className="p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <Link2 className="h-4 w-4 text-primary" />
-                  <h2 className="text-sm font-medium">Connected accounts</h2>
+                  <Link2 className="h-4 w-4 text-foreground" />
+                  <h2 className="paper-label text-muted-foreground">Connected accounts</h2>
                 </div>
                 <Button variant="secondary" size="sm">
                   <RefreshCw className="h-4 w-4" /> Sync now
@@ -333,7 +333,7 @@ export default function Settings() {
                 Last synced 12 minutes ago
               </p>
 
-              <ul className="mt-5 divide-y divide-border/50">
+              <ul className="mt-5">
                 {CONNECTIONS.map((name) => {
                   const platform = (user?.platforms ?? currentUser.platforms).find(
                     (p) => p.platform === name
@@ -341,7 +341,7 @@ export default function Settings() {
                   const connected = linked.has(name)
                   return (
                     <li key={name} className="flex flex-wrap items-center gap-3 py-4">
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-xs font-medium">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border bg-card text-xs font-medium">
                         {name === 'GitHub' ? (
                           <GithubMark className="h-5 w-5" />
                         ) : name === 'Google' ? (
@@ -375,8 +375,8 @@ export default function Settings() {
           {section === 'notifications' && (
             <Card className="p-6">
               <div className="flex items-center gap-2">
-                <Bell className="h-4 w-4 text-primary" />
-                <h2 className="text-sm font-medium">Notification channels</h2>
+                <Bell className="h-4 w-4 text-foreground" />
+                <h2 className="paper-label text-muted-foreground">Notification channels</h2>
               </div>
 
               <div className="mt-6 grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-6 gap-y-1">
@@ -384,7 +384,7 @@ export default function Settings() {
                 {['Email', 'Push', 'In-app'].map((c) => (
                   <span
                     key={c}
-                    className="pb-2 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
+                    className="pb-2 text-center text-[11px] font-medium text-muted-foreground"
                   >
                     {c}
                   </span>
@@ -392,14 +392,14 @@ export default function Settings() {
 
                 {NOTIFY_ROWS.map((r) => (
                   <div key={r.key} className="contents">
-                    <div className="border-t border-border/50 py-4">
+                    <div className=" py-4">
                       <p className="text-sm">{r.label}</p>
                       <p className="text-xs text-muted-foreground">{r.detail}</p>
                     </div>
                     {['email', 'push', 'inapp'].map((c) => (
                       <div
                         key={c}
-                        className="flex justify-center border-t border-border/50 py-4"
+                        className="flex justify-center py-4"
                       >
                         <Checkbox
                           checked={channels[r.key]?.includes(c)}
@@ -417,8 +417,8 @@ export default function Settings() {
           {section === 'appearance' && (
             <Card className="p-6">
               <div className="flex items-center gap-2">
-                <Palette className="h-4 w-4 text-primary" />
-                <h2 className="text-sm font-medium">Appearance</h2>
+                <Palette className="h-4 w-4 text-foreground" />
+                <h2 className="paper-label text-muted-foreground">Appearance</h2>
               </div>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -427,26 +427,26 @@ export default function Settings() {
                     key={t.key}
                     onClick={() => setTheme(t.key)}
                     className={cn(
-                      'rounded-2xl border border-border/60 p-3 text-left transition-all',
-                      theme === t.key && 'ring-2 ring-primary'
+                      'rounded-xl border p-3 text-left transition-colors',
+                      theme === t.key ? 'border-foreground' : 'border-border'
                     )}
                   >
-                    <div className={cn('h-20 rounded-xl', t.swatch)} />
+                    <div className={cn('h-20 rounded-lg border border-border', t.swatch)} />
                     <p className="mt-3 text-sm">{t.label}</p>
                   </button>
                 ))}
               </div>
 
-              <div className="mt-6 border-t border-border/50 pt-5">
-                <p className="text-sm">Accent colour</p>
+              <div className="mt-6 pt-5">
+                <p className="text-sm">Ink tone</p>
                 <div className="mt-3 flex gap-2">
-                  {['bg-primary', 'bg-lime', 'bg-chart-3', 'bg-chart-4', 'bg-warning'].map(
+                  {['bg-foreground', 'bg-chart-2', 'bg-chart-3', 'bg-chart-4', 'bg-chart-5'].map(
                     (c, i) => (
                       <button
                         key={c}
                         aria-label={`Accent ${i + 1}`}
                         className={cn(
-                          'h-8 w-8 rounded-full transition-transform hover:scale-110',
+                          'h-8 w-8 rounded-full border border-border',
                           c,
                           i === 0 && 'ring-2 ring-foreground ring-offset-2 ring-offset-card'
                         )}
@@ -456,7 +456,7 @@ export default function Settings() {
                 </div>
               </div>
 
-              <div className="mt-6 divide-y divide-border/50 border-t border-border/50">
+              <div className="mt-6">
                 <div className="flex items-center justify-between py-4">
                   <div>
                     <p className="text-sm">Compact density</p>
@@ -491,8 +491,8 @@ export default function Settings() {
           {section === 'privacy' && (
             <Card className="p-6">
               <div className="flex items-center gap-2">
-                <Eye className="h-4 w-4 text-primary" />
-                <h2 className="text-sm font-medium">Privacy</h2>
+                <Eye className="h-4 w-4 text-foreground" />
+                <h2 className="paper-label text-muted-foreground">Privacy</h2>
               </div>
 
               <div className="mt-6 flex items-center justify-between gap-4">
@@ -514,7 +514,7 @@ export default function Settings() {
                 </Select>
               </div>
 
-              <div className="mt-4 divide-y divide-border/50 border-t border-border/50">
+              <div className="mt-4">
                 {[
                   ['Show my rating', 'Display current and peak rating publicly.'],
                   ['Show solved problems', 'Let others browse your solved list.'],
@@ -534,13 +534,13 @@ export default function Settings() {
           )}
 
           {section === 'danger' && (
-            <Card className="border-destructive/40 p-6">
+            <Card className="p-6">
               <div className="flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-destructive" />
-                <h2 className="text-sm font-medium">Danger zone</h2>
+                <ShieldAlert className="h-4 w-4 text-foreground" />
+                <h2 className="paper-label text-muted-foreground">Danger zone</h2>
               </div>
 
-              <ul className="mt-5 divide-y divide-border/50">
+              <ul className="mt-5">
                 <li className="flex flex-wrap items-center justify-between gap-3 py-4">
                   <div>
                     <p className="text-sm">Export my data</p>
@@ -565,7 +565,7 @@ export default function Settings() {
                 </li>
                 <li className="flex flex-wrap items-center justify-between gap-3 py-4">
                   <div>
-                    <p className="text-sm text-destructive">Delete account</p>
+                    <p className="text-sm">Delete account</p>
                     <p className="text-xs text-muted-foreground">
                       Permanent. All progress and teams are removed.
                     </p>

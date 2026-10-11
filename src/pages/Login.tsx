@@ -1,150 +1,74 @@
 import { useState } from 'react'
-import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 
-import { OAuthButtons } from '@/components/OAuthButtons'
-import { RolePicker } from '@/components/RolePicker'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { useAuth } from '@/lib/auth'
-import type { Role } from '@/lib/data'
 
 export default function Login() {
-  const { signIn } = useAuth()
-  const navigate = useNavigate()
+  const { signIn, isAuthenticated } = useAuth()
 
-  const [email, setEmail] = useState('iqbal1729@gmail.com')
-  const [password, setPassword] = useState('icpc2026')
-  const [role, setRole] = useState<Role>('student')
-  const [showPassword, setShowPassword] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!email.includes('@') || password.length < 6) {
-      setError('Enter a valid email and a password of at least 6 characters.')
-      return
-    }
     setError('')
-    signIn(email, role)
-    navigate('/app')
+    setBusy(true)
+    const err = await signIn(email, password)
+    setBusy(false)
+    if (err) setError(err)
   }
 
-  function oauth() {
-    signIn(email, role)
-    navigate('/app')
-  }
+  // Redirect once the session exists (also skips the form for signed-in visitors).
+  if (isAuthenticated) return <Navigate to="/app" replace />
 
   return (
-    <AuthLayout
-      quote="Rating is a lagging indicator. The work you do tonight shows up three contests from now."
-      attribution="Aarav Mehta · ICPC World Finalist, mentor on O(1)"
-    >
-      <div>
-        <h1
-          className="text-4xl leading-tight tracking-tight"
-          style={{ fontFamily: "'Instrument Serif', serif" }}
-        >
-          Welcome back.
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Sign in to pick up your streak, sheets, and upcoming contests.
-        </p>
+    <AuthLayout>
+      <div className="text-center">
+        <h1 className="font-headline text-4xl sm:text-[2.6rem]">Welcome back!</h1>
+        <p className="mt-3 text-xs text-muted-foreground">Your problems, your sheets, your team.</p>
 
-        <form onSubmit={submit} className="mt-8 space-y-5">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <div className="relative">
-              <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@university.edu"
-                className="pl-10"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <Link
-                to="/login"
-                className="text-xs text-primary transition-colors hover:text-primary/80"
-              >
-                Forgot password?
-              </Link>
-            </div>
-            <div className="relative">
-              <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="px-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Sign in as</Label>
-            <RolePicker value={role} onChange={setRole} />
-          </div>
+        <form onSubmit={submit} className="mt-8 space-y-3 text-left">
+          <input
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="E-mail"
+            aria-label="E-mail"
+            className="paper-input rounded-full text-xs"
+          />
+          <input
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            aria-label="Password"
+            className="paper-input rounded-full text-xs"
+          />
 
           {error && (
-            <p className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+            <p role="alert" className="text-center text-xs text-foreground">
               {error}
             </p>
           )}
 
-          <label className="flex cursor-pointer items-center gap-2.5 text-sm text-muted-foreground">
-            <Checkbox defaultChecked />
-            Keep me signed in on this device
-          </label>
-
-          <Button type="submit" className="h-11 w-full rounded-xl">
-            Sign in <ArrowRight className="h-4 w-4" />
-          </Button>
+          <button
+            type="submit"
+            disabled={busy}
+            className="h-10 w-full rounded-full bg-primary text-xs font-medium text-primary-foreground transition-colors hover:bg-[hsl(0_0%_20%)] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60"
+          >
+            {busy ? 'Signing in…' : 'Sign in'}
+          </button>
         </form>
 
-        <div className="my-7 flex items-center gap-4">
-          <span className="h-px flex-1 bg-border" />
-          <span className="text-xs uppercase tracking-wider text-muted-foreground">
-            or continue with
-          </span>
-          <span className="h-px flex-1 bg-border" />
-        </div>
-
-        <OAuthButtons onProvider={oauth} />
-
-        <p className="mt-8 text-center text-sm text-muted-foreground">
-          New to O(1)?{' '}
-          <Link
-            to="/signup"
-            className="font-medium text-primary transition-colors hover:text-primary/80"
-          >
-            Create an account
+        <p className="mt-8 text-[11px] text-muted-foreground">
+          Don&apos;t have an account?{' '}
+          <Link to="/signup" className="ml-1 text-foreground underline underline-offset-4">
+            Sign up
           </Link>
         </p>
       </div>

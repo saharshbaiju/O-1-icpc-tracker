@@ -4,29 +4,29 @@ import { cva, type VariantProps } from 'class-variance-authority'
 
 import { cn } from '@/lib/utils'
 
+/* Paper buttons: black pill by default, thin-bordered white sheet for outline, bare for ghost. No shadows. */
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        contrast: 'bg-foreground text-background hover:bg-foreground/90',
+        default: 'bg-primary text-primary-foreground hover:bg-[hsl(0_0%_20%)]',
+        contrast: 'bg-foreground text-background hover:bg-[hsl(0_0%_20%)]',
         destructive:
-          'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        outline:
-          'border border-border bg-transparent hover:border-border hover:bg-secondary/60',
-        secondary: 'bg-secondary text-foreground hover:bg-secondary/70',
-        ghost: 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
-        link: 'text-primary underline-offset-4 hover:underline',
-        glass: 'liquid-glass',
+          'bg-destructive text-destructive-foreground hover:bg-[hsl(0_0%_20%)]',
+        outline: 'border border-border bg-card text-foreground hover:bg-secondary',
+        secondary: 'bg-secondary text-foreground hover:bg-accent',
+        ghost: 'bg-transparent text-muted-foreground hover:bg-secondary hover:text-foreground',
+        link: 'text-foreground underline underline-offset-4 hover:text-muted-foreground',
+        glass: 'border border-border bg-card text-foreground hover:bg-secondary',
       },
       size: {
-        default: 'h-10 px-4 py-2',
-        sm: 'h-9 rounded-lg px-3 text-[13px]',
-        lg: 'h-12 rounded-xl px-8',
-        icon: 'h-10 w-10 rounded-xl',
+        default: 'h-9 px-4 py-2 text-xs',
+        sm: 'h-8 px-3 text-xs',
+        lg: 'h-11 px-6 text-sm',
+        icon: 'h-9 w-9 rounded-lg',
         'icon-sm': 'h-8 w-8 rounded-lg',
-        pill: 'h-10 rounded-full px-5',
+        pill: 'h-9 px-5 text-xs',
         none: '',
       },
     },

@@ -66,8 +66,8 @@ function ChartBox({
 }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-xl border border-border bg-popover px-3 py-2 shadow-xl">
-      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-lg border border-border bg-popover px-3 py-2">
+      <p className="text-[11px] text-muted-foreground">
         {label}
       </p>
       {payload.map((p, i) => (
@@ -82,9 +82,9 @@ function ChartBox({
 }
 
 function masteryBar(m: number) {
-  if (m >= 70) return 'bg-success'
-  if (m >= 45) return 'bg-warning'
-  return 'bg-destructive'
+  if (m >= 70) return 'bg-foreground'
+  if (m >= 45) return 'bg-chart-2'
+  return 'bg-chart-3'
 }
 
 export default function Analytics() {
@@ -138,7 +138,7 @@ export default function Analytics() {
         title="Performance Analytics"
         description="Rating curves, topic mastery, submission density and contest outcomes — the numbers that tell you what to fix next, not just what you solved."
         actions={
-          <div className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-card p-1">
+          <div className="inline-flex items-center gap-1 rounded-full border border-border bg-card p-1">
             {PERIODS.map((p) => (
               <button
                 key={p}
@@ -173,7 +173,7 @@ export default function Analytics() {
           delta={12}
           hint="All judges combined"
           icon="Target"
-          accent="lime"
+          accent="primary"
         />
         <StatCard
           label="Contests"
@@ -181,7 +181,7 @@ export default function Analytics() {
           delta={9}
           hint="Rated rounds entered"
           icon="Swords"
-          accent="chart-3"
+          accent="primary"
         />
         <StatCard
           label="Current streak"
@@ -189,7 +189,7 @@ export default function Analytics() {
           delta={4}
           hint={`Longest ${heatStats.best} days`}
           icon="Flame"
-          accent="warning"
+          accent="primary"
         />
       </div>
 
@@ -198,7 +198,7 @@ export default function Analytics() {
         <Card className="p-6 lg:col-span-2">
           <div className="flex items-center gap-2">
             <ChartSpline className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-medium">Rating progression</h2>
+            <h2 className="paper-label text-muted-foreground">Rating progression</h2>
           </div>
           <p className="mt-1.5 text-xs text-muted-foreground">
             Twelve rated rounds · net {ratingHistory[ratingHistory.length - 1].rating - ratingHistory[0].rating} points
@@ -210,18 +210,6 @@ export default function Analytics() {
                 data={ratingHistory}
                 margin={{ top: 8, right: 8, bottom: 0, left: -20 }}
               >
-                <defs>
-                  <linearGradient
-                    id="analyticsRatingFill"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="0%" stopColor="hsl(var(--lime))" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="hsl(var(--lime))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke="hsl(var(--border))"
@@ -242,23 +230,23 @@ export default function Analytics() {
                 <Tooltip content={<ChartBox />} cursor={false} />
                 <ReferenceLine
                   y={peak}
-                  stroke="hsl(var(--primary))"
+                  stroke="hsl(var(--muted-foreground))"
                   strokeDasharray="4 4"
                   label={{
                     value: `Peak ${peak}`,
                     position: 'insideTopRight',
-                    fill: 'hsl(var(--primary))',
+                    fill: 'hsl(var(--muted-foreground))',
                     fontSize: 11,
                   }}
                 />
                 <Area
                   type="monotone"
                   dataKey="rating"
-                  stroke="hsl(var(--lime))"
-                  strokeWidth={2}
-                  fill="url(#analyticsRatingFill)"
+                  stroke="hsl(var(--foreground))"
+                  strokeWidth={1.5}
+                  fill="hsl(var(--muted))"
                   dot={false}
-                  activeDot={{ r: 4, fill: 'hsl(var(--lime))' }}
+                  activeDot={{ r: 4, fill: 'hsl(var(--foreground))' }}
                 
                   isAnimationActive={false}
                 />
@@ -268,10 +256,10 @@ export default function Analytics() {
 
           <div className="mt-4 flex flex-wrap items-center gap-5 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-lime" /> Rating
+              <span className="h-2 w-2 rounded-full bg-foreground" /> Rating
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-4 rounded-full bg-primary/60" /> Peak
+              <span className="h-px w-4 border-t border-dashed border-muted-foreground" /> Peak
             </span>
             <span>Showing: {period.toLowerCase()}</span>
           </div>
@@ -280,7 +268,7 @@ export default function Analytics() {
         <Card className="p-6">
           <div className="flex items-center gap-2">
             <PieIcon className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-medium">Solves by platform</h2>
+            <h2 className="paper-label text-muted-foreground">Solves by platform</h2>
           </div>
 
           <div className="relative mt-4 h-[200px]">
@@ -296,8 +284,8 @@ export default function Analytics() {
                   stroke="none"
                   isAnimationActive={false}
                 >
-                  {platformSplit.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
+                  {platformSplit.map((entry, i) => (
+                    <Cell key={entry.name} fill={`hsl(var(--chart-${i + 1}))`} />
                   ))}
                 </Pie>
                 <Tooltip content={<ChartBox />} />
@@ -315,11 +303,11 @@ export default function Analytics() {
           </div>
 
           <ul className="mt-5 space-y-2.5">
-            {platformSplit.map((p) => (
+            {platformSplit.map((p, i) => (
               <li key={p.name} className="flex items-center gap-2.5 text-sm">
                 <span
                   className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: p.color }}
+                  style={{ backgroundColor: `hsl(var(--chart-${i + 1}))` }}
                 />
                 <span className="flex-1 truncate text-muted-foreground">
                   {p.name}
@@ -336,7 +324,7 @@ export default function Analytics() {
         <Card className="p-6">
           <div className="flex items-center gap-2">
             <Layers className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-medium">Problems solved by month</h2>
+            <h2 className="paper-label text-muted-foreground">Problems solved by month</h2>
           </div>
           <p className="mt-1.5 text-xs text-muted-foreground">
             Split by difficulty — the hard band is the one that moves rating.
@@ -364,7 +352,7 @@ export default function Analytics() {
                   axisLine={false}
                   tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
                 />
-                <Tooltip content={<ChartBox />} cursor={{ fill: 'hsl(var(--secondary))', opacity: 0.4 }} />
+                <Tooltip content={<ChartBox />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.6 }} />
                 <Bar dataKey="easy" stackId="a" fill="hsl(var(--easy))" 
                   isAnimationActive={false}
                 />
@@ -375,7 +363,7 @@ export default function Analytics() {
                   dataKey="hard"
                   stackId="a"
                   fill="hsl(var(--hard))"
-                  radius={[6, 6, 0, 0]}
+                  radius={[2, 2, 0, 0]}
                 
                   isAnimationActive={false}
                 />
@@ -399,7 +387,7 @@ export default function Analytics() {
         <Card className="p-6">
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-medium">Topic mastery</h2>
+            <h2 className="paper-label text-muted-foreground">Topic mastery</h2>
           </div>
 
           <ul className="mt-6 space-y-4">
@@ -420,14 +408,14 @@ export default function Analytics() {
             ))}
           </ul>
 
-          <div className="mt-6 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3">
+          <div className="mt-6 rounded-lg bg-foreground text-background px-4 py-3">
             <p className="text-sm">
               Focus next:{' '}
-              <span className="font-medium text-warning">
+              <span className="font-medium">
                 {weakest.map((w) => w.topic).join(' and ')}
               </span>
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-xs text-background/70">
               Both sit under 30% coverage and appear in most regional sets.
             </p>
           </div>
@@ -439,7 +427,7 @@ export default function Analytics() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-medium">Submission heatmap</h2>
+            <h2 className="paper-label text-muted-foreground">Submission heatmap</h2>
           </div>
           <span className="text-xs text-muted-foreground">
             {compact(heatStats.total)} submissions · longest streak{' '}
@@ -467,12 +455,12 @@ export default function Analytics() {
                     <UiTooltip key={d.date}>
                       <TooltipTrigger asChild>
                         <div
-                          className="h-3 w-3 rounded-[3px] transition-transform hover:scale-125"
+                          className="h-3 w-3 rounded-[2px] hover:scale-125"
                           style={{
                             backgroundColor:
                               d.count === 0
-                                ? 'hsl(var(--secondary))'
-                                : `hsl(var(--primary) / ${Math.min(1, 0.22 + d.count * 0.11)})`,
+                                ? 'hsl(var(--muted))'
+                                : `hsl(var(--foreground) / ${Math.min(1, 0.22 + d.count * 0.11)})`,
                           }}
                         />
                       </TooltipTrigger>
@@ -496,8 +484,8 @@ export default function Analytics() {
               style={{
                 backgroundColor:
                   c === 0
-                    ? 'hsl(var(--secondary))'
-                    : `hsl(var(--primary) / ${Math.min(1, 0.22 + c * 0.11)})`,
+                    ? 'hsl(var(--muted))'
+                    : `hsl(var(--foreground) / ${Math.min(1, 0.22 + c * 0.11)})`,
               }}
             />
           ))}
@@ -509,7 +497,7 @@ export default function Analytics() {
       <Card className="p-6">
         <div className="flex items-center gap-2">
           <ChartSpline className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-medium">Contest performance</h2>
+          <h2 className="paper-label text-muted-foreground">Contest performance</h2>
         </div>
 
         <div className="mt-5">
@@ -545,7 +533,7 @@ export default function Analytics() {
                       <span
                         className={cn(
                           'text-sm font-medium tabular-nums',
-                          c.delta >= 0 ? 'text-success' : 'text-destructive'
+                          c.delta >= 0 ? 'text-foreground' : 'text-muted-foreground'
                         )}
                       >
                         {c.delta >= 0 ? '+' : ''}

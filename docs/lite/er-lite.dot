@@ -1,0 +1,53 @@
+// O(1) Lite — ER diagram, Chen notation. Double box = weak entity, double diamond = identifying relationship, double line = total participation, dashed ellipse = derived attribute.
+//  Render: dot -Tpng -Gdpi=150 er-lite.dot -o er-lite.png
+graph ER {
+  graph [layout=neato, overlap=false, sep="+14", splines=true, fontname="Liberation Serif"]
+  node  [fontname="Liberation Serif", fontsize=13]
+  edge  [fontname="Liberation Serif", fontsize=13, fontcolor="#7a1f1f"]
+
+  // entities
+  node [shape=box, style=filled, fillcolor="#eef0ff", penwidth=1.4]
+  University [pos="0,6!"]; User [pos="0,3!"]; Team [pos="5,3!"]; Sheet [pos="9,3!"];
+  Problem [pos="5,-1!"]; Topic [pos="9,-1!"];
+  Submission [pos="0,-1!", peripheries=2];   // weak entity
+
+  // relationships
+  node [shape=diamond, style=filled, fillcolor="#fff5dd", fontsize=12]
+  studies_at [pos="0,4.5!"]; member_of [pos="2.5,3!"];
+  assigned_to [pos="7,3!"];
+  makes [pos="0,1!", peripheries=2]; for_problem [pos="2.5,-1!", peripheries=2];   // identifying
+  tagged [pos="7,-1!"]; contains [pos="7,1!"];
+
+  // attributes
+  node [shape=ellipse, style=solid, fillcolor=white, fontsize=11]
+  u_id [label=<<u>univ_id</u>>, pos="-1.6,7!"]; u_nm [label="univ_name", pos="0,7.3!"]; u_city [label="city", pos="1.6,7!"];
+  us_id [label=<<u>user_id</u>>, pos="-2.4,3.8!"]; us_nm [label="name", pos="-2.6,3!"]; us_em [label="email", pos="-2.4,2.2!"];
+  us_cf [label="cf_handle", pos="-1.7,4.6!"]; us_rt [label="cf_rating", pos="-0.9,5.4!"]; us_pw [label="password_hash", pos="1.3,1.7!"];
+  t_id [label=<<u>team_id</u>>, pos="4.2,4.4!"]; t_nm [label="team_name", pos="5.8,4.4!"];
+  s_id [label=<<u>sheet_id</u>>, pos="8.2,4.4!"]; s_t [label="title", pos="9.8,4.4!"]; s_dl [label="deadline", pos="10.6,3!"];
+  p_id [label=<<u>problem_code</u>>, pos="4,-2.4!"]; p_t [label="title", pos="5.6,-2.6!"]; p_r [label="rating", pos="6.4,-1.9!"];
+  p_d [label="difficulty", style=dashed, pos="3.6,0!"];
+  tp_id [label=<<u>topic_id</u>>, pos="8.6,-2.4!"]; tp_nm [label="topic_name", pos="10.2,-1.9!"];
+  sb_at [label=<<u>submitted_at</u> (partial key)>, pos="-1.6,-2.4!"]; sb_v [label="verdict", pos="0,-2.7!"]; sb_l [label="language", pos="1.5,-2.3!"];
+  pos_attr [label="position", pos="8.3,1.7!"];
+
+  // entity–relationship edges (double line = total participation)
+  User -- studies_at [label="N", color="black:invis:black"]; studies_at -- University [label="1"];
+  User -- member_of [label="N"]; member_of -- Team [label="1"];
+  Sheet -- assigned_to [label="N", color="black:invis:black"]; assigned_to -- Team [label="1"];
+  User -- makes [label="1"]; makes -- Submission [label="N", color="black:invis:black"];
+  Submission -- for_problem [label="N", color="black:invis:black"]; for_problem -- Problem [label="1"];
+  Problem -- tagged [label="M"]; tagged -- Topic [label="N"];
+  Sheet -- contains [label="M", color="black:invis:black"]; contains -- Problem [label="N"];
+
+  // attribute edges
+  edge [color="#555555"]
+  University -- {u_id u_nm u_city}
+  User -- {us_id us_nm us_em us_cf us_rt us_pw}
+  Team -- {t_id t_nm}
+  Sheet -- {s_id s_t s_dl}
+  Problem -- {p_id p_t p_r p_d}
+  Topic -- {tp_id tp_nm}
+  Submission -- {sb_at sb_v sb_l}
+  contains -- pos_attr
+}

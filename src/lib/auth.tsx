@@ -1,86 +1,66 @@
 import * as React from 'react'
-import { currentUser, type Role, type User } from '@/lib/data'
+
+import { api, attempt, type User } from '@/lib/api'
 
 /**
- * UI-only auth. There is no backend yet — signing in just marks a flag in
- * localStorage so the routing and role-based navigation can be demonstrated.
+ * Who is signed in. The Flask backend keeps the session in a cookie;
+ * on load we ask /api/me, and sign-in / sign-up / sign-out call the API.
  */
+
+export interface SignUpInput {
+  name: string
+  email: string
+  password: string
+  university: string
+  city: string
+  cf_handle: string
+}
 
 interface AuthState {
   user: User | null
+  loading: boolean
   isAuthenticated: boolean
-  role: Role
-  signIn: (email?: string, role?: Role) => void
-  signUp: (name: string, email: string, role: Role) => void
-  signOut: () => void
+  signIn: (email: string, password: string) => Promise<string | null>
+  signUp: (input: SignUpInput) => Promise<string | null>
+  signOut: () => Promise<void>
+  /** Re-read /api/me after something about the user changed (profile, team). */
+  refresh: () => Promise<void>
 }
 
 const AuthContext = React.createContext<AuthState | null>(null)
 
-const STORAGE_KEY = 'o1.auth'
-
-interface Persisted {
-  authenticated: boolean
-  role: Role
-  name?: string
-  email?: string
-}
-
-function read(): Persisted {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as Persisted
-      // Older builds persisted an 'admin' role that no longer exists.
-      if (parsed.role !== 'student' && parsed.role !== 'mentor') {
-        parsed.role = 'student'
-      }
-      return parsed
-    }
-  } catch {
-    /* ignore malformed storage */
-  }
-  return { authenticated: false, role: 'student' }
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = React.useState<Persisted>(read)
+  const [user, setUser] = React.useState<User | null>(null)
+  const [loading, setLoading] = React.useState(true)
 
-  const persist = React.useCallback((next: Persisted) => {
-    setState(next)
+  const refresh = React.useCallback(async () => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      setUser(await api.get<User>('/me'))
     } catch {
-      /* storage unavailable — session-only is fine */
+      setUser(null)
     }
   }, [])
 
-  const value = React.useMemo<AuthState>(() => {
-    const user: User | null = state.authenticated
-      ? {
-          ...currentUser,
-          role: state.role,
-          name: state.name || currentUser.name,
-          email: state.email || currentUser.email,
-        }
-      : null
+  React.useEffect(() => {
+    refresh().finally(() => setLoading(false))
+  }, [refresh])
 
-    return {
+  const value = React.useMemo<AuthState>(
+    () => ({
       user,
-      isAuthenticated: state.authenticated,
-      role: state.role,
-      signIn: (email, role) =>
-        persist({
-          authenticated: true,
-          role: role ?? state.role,
-          email: email || currentUser.email,
-          name: state.name,
-        }),
-      signUp: (name, email, role) =>
-        persist({ authenticated: true, role, name, email }),
-      signOut: () => persist({ authenticated: false, role: 'student' }),
-    }
-  }, [state, persist])
+      loading,
+      isAuthenticated: user != null,
+      signIn: (email, password) =>
+        attempt(async () => setUser(await api.post<User>('/login', { email, password }))),
+      signUp: (input) => attempt(async () => setUser(await api.post<User>('/signup', input))),
+      signOut: async () => {
+        await api.post('/logout').catch(() => {})
+        setUser(null)
+      },
+      refresh,
+    }),
+    [user, loading, refresh]
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
@@ -89,4 +69,11 @@ export function useAuth() {
   const ctx = React.useContext(AuthContext)
   if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>')
   return ctx
+}
+
+/** For pages inside the signed-in app, where a user always exists. */
+export function useMe(): User {
+  const { user } = useAuth()
+  if (!user) throw new Error('useMe called outside the signed-in app')
+  return user
 }

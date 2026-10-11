@@ -3,19 +3,18 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from '@/layouts/AppLayout'
 import { AuthProvider } from '@/lib/auth'
 
-import Analytics from '@/pages/Analytics'
-import Calendar from '@/pages/Calendar'
 import Dashboard from '@/pages/Dashboard'
+import Database from '@/pages/Database'
 import Landing from '@/pages/Landing'
 import Leaderboard from '@/pages/Leaderboard'
 import Login from '@/pages/Login'
 import NotFound from '@/pages/NotFound'
 import Problems from '@/pages/Problems'
-import Resources from '@/pages/Resources'
-import Settings from '@/pages/Settings'
+import Profile from '@/pages/Profile'
 import Sheets from '@/pages/Sheets'
 import Signup from '@/pages/Signup'
-import Teams from '@/pages/Teams'
+import Submissions from '@/pages/Submissions'
+import Team from '@/pages/Team'
 
 export default function App() {
   return (
@@ -28,14 +27,13 @@ export default function App() {
 
           <Route path="/app" element={<AppLayout />}>
             <Route index element={<Dashboard />} />
-            <Route path="analytics" element={<Analytics />} />
             <Route path="leaderboard" element={<Leaderboard />} />
             <Route path="problems" element={<Problems />} />
+            <Route path="submissions" element={<Submissions />} />
             <Route path="sheets" element={<Sheets />} />
-            <Route path="resources" element={<Resources />} />
-            <Route path="teams" element={<Teams />} />
-            <Route path="calendar" element={<Calendar />} />
-            <Route path="settings" element={<Settings />} />
+            <Route path="team" element={<Team />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="database" element={<Database />} />
           </Route>
 
           <Route path="/dashboard" element={<Navigate to="/app" replace />} />

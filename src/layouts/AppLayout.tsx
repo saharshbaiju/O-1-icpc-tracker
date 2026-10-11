@@ -1,16 +1,34 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
+import { Loading } from '@/components/bits'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useAuth } from '@/lib/auth'
 
 export function AppLayout() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, loading } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
 
+  // Close the mobile menu on any route change (links, back button, redirects).
+  useEffect(() => setMobileOpen(false), [location.pathname])
+
+  // While the mobile menu is open: lock the page behind it and let Escape close it.
+  // The lock is a max-lg class so it never sticks if the window is widened.
+  useEffect(() => {
+    if (!mobileOpen) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMobileOpen(false)
+    document.body.classList.add('max-lg:overflow-hidden')
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.body.classList.remove('max-lg:overflow-hidden')
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [mobileOpen])
+
+  if (loading) return <Loading />
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
   }
@@ -18,24 +36,19 @@ export function AppLayout() {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="min-h-screen bg-background">
-        {/* Ambient violet wash, matching the marketing page */}
-        <div
-          aria-hidden
-          className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(900px_500px_at_15%_-10%,hsl(var(--primary)/0.16),transparent_70%),radial-gradient(700px_400px_at_100%_0%,hsl(var(--chart-4)/0.10),transparent_65%)]"
-        />
-
         <Sidebar open={mobileOpen} onNavigate={() => setMobileOpen(false)} />
 
         {mobileOpen && (
           <div
-            className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
+            aria-hidden
+            className="fixed inset-0 z-30 bg-foreground/20 lg:hidden"
             onClick={() => setMobileOpen(false)}
           />
         )}
 
-        <div className="relative z-10 lg:pl-[268px]">
-          <Topbar onMenuClick={() => setMobileOpen(true)} />
-          <main className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-8">
+        <div className="relative z-10 lg:pl-[240px]">
+          <Topbar menuOpen={mobileOpen} onMenuClick={() => setMobileOpen(true)} />
+          <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
             <Outlet />
           </main>
         </div>

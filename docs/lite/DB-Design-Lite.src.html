@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>O(1) Lite — Database Design Document</title>
+<style>
+  @page { size: A4; margin: 2cm 2cm 2cm 2.2cm; }
+  body { font-family: "Liberation Serif", "Times New Roman", serif; font-size: 12pt; line-height: 1.35; color: #000; }
+  h2 { font-size: 13pt; margin: 22pt 0 6pt; }
+  h3 { font-size: 12pt; margin: 14pt 0 4pt; }
+  h4 { font-size: 12pt; font-style: italic; font-weight: normal; margin: 10pt 0 2pt; }
+  p  { margin: 0 0 7pt; text-align: justify; }
+  .hdr { text-align: center; font-weight: bold; font-size: 13pt; }
+  .hdr p { margin: 0; text-align: center; }
+  .title { text-align: center; font-weight: bold; text-decoration: underline; font-size: 13pt; margin: 18pt 0 12pt; }
+  table { border-collapse: collapse; margin: 6pt 0 10pt; width: 100%; }
+  th, td { border: 1px solid #000; padding: 3pt 5pt; vertical-align: top; font-size: 10.5pt; }
+  th { background: #d9d9d9; text-align: left; }
+  table.plain td, table.plain th { border: none; padding: 1pt 8pt 1pt 0; font-size: 12pt; }
+  table.members { width: 60%; margin-left: 100pt; }
+  table.members th, table.members td { font-size: 12pt; }
+  table.tiny th, table.tiny td { font-size: 8.5pt; padding: 2pt 3pt; }
+  table.chase th, table.chase td { font-size: 9.5pt; padding: 2pt 3pt; text-align: center; }
+  .rel { font-family: "Liberation Mono", monospace; font-size: 10pt; margin: 2pt 0 2pt 18pt; }
+  pre, code { font-family: "Liberation Mono", "Courier New", monospace; }
+  pre { font-size: 8pt; margin: 0; padding: 0; }
+  code { font-size: 10pt; }
+  .fd { font-family: "Liberation Mono", monospace; font-size: 10.5pt; }
+  .step { font-family: "Liberation Mono", monospace; font-size: 10pt; margin: 1pt 0 1pt 18pt; }
+  .note { border-left: 3px solid #888; padding: 2pt 8pt; margin: 6pt 0; background: #f4f4f4; }
+  .ok { font-weight: bold; }
+  .brk { page-break-before: always; }
+  .small { font-size: 10.5pt; }
+  figure { margin: 8pt 0; text-align: center; }
+  figcaption { font-size: 10.5pt; font-style: italic; margin-top: 4pt; }
+  ul, ol { margin: 2pt 0 8pt; }
+  li { margin-bottom: 2pt; }
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <p>23CSE202 DATABASE MANAGEMENT SYSTEMS</p>
+  <p>S3 B.Tech CSE</p>
+  <p>Department of Computer Science and Engineering</p>
+  <p>Amrita School of Computing, Amritapuri Campus</p>
+</div>
+
+<p class="title">3. Database Design Document</p>
+
+<table class="plain">
+  <tr><td style="width:110pt">Group No</td><td>: ______</td></tr>
+  <tr><td>Team Members</td><td>:</td></tr>
+</table>
+<table class="members" border="1" cellspacing="0" cellpadding="4">
+  <tr><th>Roll No</th><th>Student Name</th></tr>
+  <tr><td>AM.SC.U4CSE25245</td><td>Saharsh Baiju</td></tr>
+  <tr><td>&nbsp;</td><td>&nbsp;</td></tr>
+  <tr><td>&nbsp;</td><td>&nbsp;</td></tr>
+  <tr><td>&nbsp;</td><td>&nbsp;</td></tr>
+</table>
+
+<table class="plain">
+  <tr><td style="width:110pt">Project Title</td><td>: <b>O(1) Lite</b> — an ICPC practice tracker for college competitive-programming teams</td></tr>
+</table>
+
+<!-- ===================================================================== 3.1 -->
+<h2>3.1. Detailed description of the project</h2>
+
+<p>
+College teams preparing for the ICPC solve problems on Codeforces, follow practice problem
+lists, and usually track who solved what in a shared spreadsheet. That
+spreadsheet repeats every student's details and every problem's details on every row,
+so it is slow to update and easy to corrupt. <b>O(1) Lite</b> replaces it with a small
+relational database: students record their submissions, form ICPC teams of up to
+three, keep practice sheets for their team, and see a leaderboard and their progress
+on each sheet.
+</p>
+
+<p>
+This is a deliberately compact design of <b>nine tables</b>, so that every table can be
+explained in a sentence and every normalisation step can be shown on real attributes.
+</p>
+
+<h3>Users</h3>
+<p>
+There is one kind of user, the <b>student</b>: they solve problems (submissions are
+recorded against them), belong to at most one team, and see the leaderboard and their
+team's sheet progress.
+</p>
+
+<h3>Why this needs a database, not just Codeforces API calls</h3>
+<p>
+Codeforces supplies only raw submissions for one handle at a time. Everything else the
+application shows either does not exist on Codeforces or needs data from many users at once:
+</p>
+<ul>
+  <li><b>Our own data:</b> universities, teams, practice sheets and topic tags are created in
+      O(1). There is no API to fetch them from; the database is their only home.</li>
+  <li><b>Queries across users:</b> the leaderboard, a team's sheet progress, and "which sheet
+      problems has nobody in the team solved" join and aggregate the submissions of many
+      students. Through the API that is one call per student on every page load, and the
+      API is rate-limited; in SQL it is one query over stored rows.</li>
+  <li><b>History and availability:</b> submissions are synced once and stored, so pages work
+      even when Codeforces is slow or down, and past data stays available.</li>
+  <li><b>Integrity:</b> keys, foreign keys, CHECK constraints and a trigger guarantee that a
+      team never has four members, a sheet never lists a problem twice, and a submission
+      never points at a missing user. An API gives no such guarantees about our data.</li>
+  <li><b>Derived values without duplication:</b> solved counts, ranks and progress are views
+      computed from base tables, so they can never disagree with the submissions.</li>
+</ul>
+<p>
+The Codeforces API is therefore only a <i>data source</i> for one table (Submission, via
+a sync job); the database is the system of record for everything.
+</p>
+
+<h3>What the system stores</h3>
+<ul>
+  <li><b>University</b> — name (unique) and city.</li>
+  <li><b>User</b> — name, unique e-mail, password hash, optional Codeforces handle
+      (unique), university, and the team they belong to (if any).</li>
+  <li><b>Team</b> — an ICPC team with a unique name; at most three students.</li>
+  <li><b>Problem</b> — identified by its Codeforces code (e.g. <code>1520C</code>), with
+      a title and a difficulty rating. Its URL and difficulty band (Easy / Medium / Hard)
+      are <i>derived</i> from the code and the rating, so they are not stored.</li>
+  <li><b>Topic</b> — Greedy, DP, Graphs, …; a problem can have many topics.</li>
+  <li><b>Submission</b> — one attempt by a user at a problem at a particular moment, with
+      a verdict and a language.</li>
+  <li><b>Sheet</b> — a practice list belonging to one team, with an optional deadline,
+      containing an ordered list of problems.</li>
+</ul>
+
+<h3>Business rules</h3>
+<ol>
+  <li>Every user studies at exactly one university.</li>
+  <li>E-mail is unique; a Codeforces handle, if given, is unique.</li>
+  <li>A student belongs to at most one team; a team has at most three members (enforced by a trigger).</li>
+  <li>A problem is identified by its Codeforces code and may carry several topics.</li>
+  <li>A submission is identified by <i>who</i> submitted, <i>which problem</i> and <i>when</i>.
+      A user cannot submit the same problem twice in the same instant.</li>
+  <li>A sheet belongs to exactly one team. Inside a sheet a problem
+      appears once, and each position (1, 2, 3 …) is used once.</li>
+  <li>Values that can be computed (difficulty band, solved count, rank, sheet progress) are
+      never stored; they are computed by views.</li>
+</ol>
+
+<h3>Scope compared with the full design</h3>
+<p>
+The earlier full design (<code>docs/DB-Design.pdf</code>, kept unchanged) had twenty
+relations. The lite version keeps the core loop — <i>problems → submissions → teams →
+sheets → leaderboard</i> — and removes features that add tables without adding new
+database concepts:
+</p>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:38%">Removed / merged</th><th>How the lite design handles it</th></tr>
+  <tr><td>JudgeAccount (weak entity)</td><td>Merged into User as a single <code>cf_handle</code> column (only Codeforces is supported).</td></tr>
+  <tr><td>TeamMember</td><td>A student is in at most one team, so <code>team_id</code> is a nullable foreign key in User.</td></tr>
+  <tr><td>Contest, ContestProblem, Participation</td><td>Dropped. Ratings and contest history can be read live from the Codeforces API.</td></tr>
+  <tr><td>SheetAssignment, SheetCompletion</td><td>A sheet is assigned to a whole team; progress is computed from submissions.</td></tr>
+  <tr><td>Resource, Bookmark, CalendarEvent, Reminder</td><td>Dropped from the database (out of scope for the lite version).</td></tr>
+  <tr><td>Mentor role (team coach, sheet author)</td><td>Dropped for now: every user is a student, and a sheet belongs to its team.</td></tr>
+</table>
+
+<!-- ===================================================================== 3.2 -->
+<h2 class="brk">3.2. ER Diagram</h2>
+
+<p>
+Chen notation: rectangles are entities, diamonds are relationships, ellipses are
+attributes (key attributes underlined, the derived attribute <i>difficulty</i> dashed).
+<b>Submission</b> is a <b>weak entity</b> (double rectangle): it has no key of its own and is
+identified through its owner User and its Problem plus the partial key
+<i>submitted_at</i>; <i>makes</i> and <i>for_problem</i> are therefore identifying
+relationships (double diamonds). Cardinalities are written on the edges, and a double
+line marks total participation.
+</p>
+
+<figure>
+  <img src="data:image/png;base64,{{ER_B64}}" alt="ER diagram" width="620" height="460">
+  <figcaption>Figure 1 — ER diagram of O(1) Lite. Source: <code>docs/lite/er-lite.dot</code>.</figcaption>
+</figure>
+
+<h3>Entity summary</h3>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:20%">Entity</th><th style="width:28%">Key</th><th>Other attributes</th></tr>
+  <tr><td>University</td><td><u>univ_id</u></td><td>univ_name, city</td></tr>
+  <tr><td>User</td><td><u>user_id</u></td><td>name, email, password_hash, cf_handle, cf_rating, cf_max_rating</td></tr>
+  <tr><td>Team</td><td><u>team_id</u></td><td>team_name</td></tr>
+  <tr><td>Problem</td><td><u>problem_code</u></td><td>title, rating, <i>difficulty (derived)</i></td></tr>
+  <tr><td>Topic</td><td><u>topic_id</u></td><td>topic_name</td></tr>
+  <tr><td>Submission <i>(weak)</i></td><td>owner user + problem + <u>submitted_at</u> (partial key)</td><td>verdict, language</td></tr>
+  <tr><td>Sheet</td><td><u>sheet_id</u></td><td>title, deadline</td></tr>
+</table>
+
+<h3>Relationship summary</h3>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:16%">Relationship</th><th style="width:24%">Entities</th><th style="width:12%">Cardinality</th><th style="width:22%">Participation</th><th>Note</th></tr>
+  <tr><td>studies_at</td><td>User – University</td><td>N : 1</td><td>User total</td><td>—</td></tr>
+  <tr><td>member_of</td><td>User – Team</td><td>N : 1</td><td>both partial</td><td>≤ 3 students per team</td></tr>
+  <tr><td>assigned_to</td><td>Sheet – Team</td><td>N : 1</td><td>Sheet total</td><td>—</td></tr>
+  <tr><td>contains</td><td>Sheet – Problem</td><td>M : N</td><td>Sheet total</td><td>attribute <i>position</i></td></tr>
+  <tr><td>tagged</td><td>Problem – Topic</td><td>M : N</td><td>both partial</td><td>—</td></tr>
+  <tr><td>makes <i>(identifying)</i></td><td>User – Submission</td><td>1 : N</td><td>Submission total</td><td>—</td></tr>
+  <tr><td>for_problem <i>(identifying)</i></td><td>Submission – Problem</td><td>N : 1</td><td>Submission total</td><td>—</td></tr>
+</table>
+
+<!-- ===================================================================== 3.3 -->
+<h2 class="brk">3.3. Relational Schema</h2>
+
+<p>The ER diagram is converted to tables with the standard mapping rules:</p>
+<ul>
+  <li><b>Strong entity</b> → a table with the entity's key as primary key (University, User, Team, Problem, Topic, Sheet).</li>
+  <li><b>Weak entity</b> → a table whose primary key is the owners' keys plus the partial
+      key: Submission(<u>user_id, problem_code, submitted_at</u>).</li>
+  <li><b>1 : N relationship</b> → the key of the "1" side is added as a foreign key on the
+      "N" side (studies_at → User.univ_id, member_of → User.team_id, assigned_to → Sheet.team_id). Partial participation of the
+      N side gives a nullable foreign key (User.team_id).</li>
+  <li><b>M : N relationship</b> → a separate junction table whose key is both keys, plus
+      any relationship attribute (tagged → Problem_Topic, contains → Sheet_Problem with <i>position</i>).</li>
+  <li><b>Derived attribute</b> → not stored; computed in a view (§3.5).</li>
+</ul>
+
+<p>Primary keys are underlined; → marks a foreign key and the table it references.</p>
+<p class="rel">1. University(<u>univ_id</u>, univ_name, city)</p>
+<p class="rel">2. Team(<u>team_id</u>, team_name)</p>
+<p class="rel">3. User(<u>user_id</u>, name, email, password_hash, cf_handle, cf_rating, cf_max_rating, univ_id → University, team_id → Team <i>[nullable]</i>)</p>
+<p class="rel">4. Topic(<u>topic_id</u>, topic_name)</p>
+<p class="rel">5. Problem(<u>problem_code</u>, title, rating)</p>
+<p class="rel">6. Problem_Topic(<u>problem_code</u> → Problem, <u>topic_id</u> → Topic)</p>
+<p class="rel">7. Submission(<u>user_id</u> → User, <u>problem_code</u> → Problem, <u>submitted_at</u>, verdict, language)</p>
+<p class="rel">8. Sheet(<u>sheet_id</u>, title, team_id → Team, deadline)</p>
+<p class="rel">9. Sheet_Problem(<u>sheet_id</u> → Sheet, <u>problem_code</u> → Problem, position)</p>
+
+<h3>Keys</h3>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:18%">Table</th><th style="width:27%">Primary key</th><th style="width:27%">Other candidate (alternate) keys</th><th>Foreign keys</th></tr>
+  <tr><td>University</td><td>univ_id</td><td>univ_name</td><td>—</td></tr>
+  <tr><td>Team</td><td>team_id</td><td>team_name</td><td>—</td></tr>
+  <tr><td>User</td><td>user_id</td><td>email (cf_handle is UNIQUE but nullable, so it is not a candidate key)</td><td>univ_id, team_id</td></tr>
+  <tr><td>Topic</td><td>topic_id</td><td>topic_name</td><td>—</td></tr>
+  <tr><td>Problem</td><td>problem_code</td><td>—</td><td>—</td></tr>
+  <tr><td>Problem_Topic</td><td>(problem_code, topic_id)</td><td>—</td><td>problem_code, topic_id</td></tr>
+  <tr><td>Submission</td><td>(user_id, problem_code, submitted_at)</td><td>—</td><td>user_id, problem_code</td></tr>
+  <tr><td>Sheet</td><td>sheet_id</td><td>—</td><td>team_id</td></tr>
+  <tr><td>Sheet_Problem</td><td>(sheet_id, problem_code)</td><td>(sheet_id, position)</td><td>sheet_id, problem_code</td></tr>
+</table>
+<p>
+Every candidate key is also a <b>super key</b>; any super set of it, e.g. (user_id, name),
+is a super key but not a candidate key because it is not minimal.
+</p>
+
+<h3>Integrity constraints</h3>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:22%">Kind</th><th>Where</th><th style="width:16%">Business rule</th></tr>
+  <tr><td>Domain (CHECK)</td><td>800 ≤ rating ≤ 3500; verdict ∈ {OK, WRONG_ANSWER, …}; position &gt; 0</td><td>4, 5</td></tr>
+  <tr><td>Entity integrity</td><td>every primary key is NOT NULL and unique</td><td>—</td></tr>
+  <tr><td>Key (UNIQUE)</td><td>email, cf_handle, univ_name, team_name, topic_name, (sheet_id, position)</td><td>2, 6</td></tr>
+  <tr><td>Referential integrity</td><td>all foreign keys; ON DELETE CASCADE for owned rows (a user's submissions, a sheet's problems), SET NULL when a team is deleted</td><td>5, 6</td></tr>
+  <tr><td>Trigger</td><td><code>team_size_check</code> rejects a fourth member of a team</td><td>3</td></tr>
+</table>
+
+<h3>Indexes</h3>
+<p>
+Every PRIMARY KEY and UNIQUE constraint creates a B-tree index automatically. One extra
+index supports the "did you mean" college search on sign-up:
+<code>university_name_trgm</code>, a GIN index on <i>univ_name</i> using trigrams
+(the <code>pg_trgm</code> extension). It lets <code>similarity()</code> find
+"Amrita Vishwa Vidyapeetham" when a student types "amritha", which stops near-duplicate
+colleges from being inserted.
+</p>
+
+<!-- ===================================================================== 3.4 -->
+<h2 class="brk">3.4. Normalization and Functional Dependency Analysis</h2>
+
+<p>
+We start from the spreadsheet the team used before the system existed and normalise
+it step by step. Every table in §3.3 comes out of this process.
+</p>
+
+<h3>3.4.1 Starting point: the unnormalised practice log</h3>
+<p>One row per submission; the <i>topics</i> cell holds a list.</p>
+<table class="tiny" border="1" cellspacing="0">
+  <tr><th>user_id</th><th>name</th><th>email</th><th>univ_id</th><th>univ_name</th><th>team_id</th><th>team_name</th><th>problem_code</th><th>title</th><th>rating</th><th>topics</th><th>submitted_at</th><th>verdict</th><th>lang</th></tr>
+  <tr><td>1</td><td>Saharsh</td><td>saharsh@am.edu</td><td>1</td><td>Amrita</td><td>1</td><td>Segfault Survivors</td><td>1520C</td><td>Not Adjacent Matrix</td><td>1000</td><td>Math</td><td>01-09 10:00</td><td>WA</td><td>C++</td></tr>
+  <tr><td>1</td><td>Saharsh</td><td>saharsh@am.edu</td><td>1</td><td>Amrita</td><td>1</td><td>Segfault Survivors</td><td>1520C</td><td>Not Adjacent Matrix</td><td>1000</td><td>Math</td><td>01-09 10:12</td><td>OK</td><td>C++</td></tr>
+  <tr><td>1</td><td>Saharsh</td><td>saharsh@am.edu</td><td>1</td><td>Amrita</td><td>1</td><td>Segfault Survivors</td><td>455A</td><td>Boredom</td><td>1500</td><td>DP</td><td>02-09 18:30</td><td>OK</td><td>C++</td></tr>
+  <tr><td>2</td><td>Anu</td><td>anu@am.edu</td><td>1</td><td>Amrita</td><td>1</td><td>Segfault Survivors</td><td>455A</td><td>Boredom</td><td>1500</td><td>DP</td><td>02-09 19:05</td><td>OK</td><td>Py</td></tr>
+  <tr><td>2</td><td>Anu</td><td>anu@am.edu</td><td>1</td><td>Amrita</td><td>1</td><td>Segfault Survivors</td><td>1547G</td><td>How Many Paths?</td><td>2100</td><td>DP, Graphs</td><td>03-09 21:40</td><td>TLE</td><td>Py</td></tr>
+</table>
+
+<p>This table suffers from all three anomalies:</p>
+<ul>
+  <li><b>Insertion anomaly</b> — a new problem cannot be recorded until someone submits it,
+      and a new student cannot be recorded until they make a submission.</li>
+  <li><b>Update anomaly</b> — Saharsh's e-mail is stored three times; if the university is
+      renamed, every row of every Amrita student must change. Missing one leaves the data inconsistent.</li>
+  <li><b>Deletion anomaly</b> — deleting Anu's only TLE submission also deletes the fact that
+      problem 1547G exists and is a Graphs problem.</li>
+</ul>
+
+<h3>3.4.2 First Normal Form (1NF)</h3>
+<p>
+<b>Definition:</b> a relation is in 1NF if every attribute holds a single atomic value (no
+lists, no repeating groups). The <i>topics</i> column violates this.
+</p>
+<p>
+<b>Fix:</b> a multi-valued attribute is moved to its own relation together with the key
+of the thing it describes. Topics describe a <i>problem</i>, so we create
+<b>Problem_Topic(<u>problem_code</u>, <u>topic</u>)</b> with one row per (problem, topic) pair —
+1547G now gives two rows, (1547G, DP) and (1547G, Graphs). Later, topic names are moved to
+a <b>Topic(<u>topic_id</u>, topic_name)</b> lookup table so a name is typed once (renaming
+"DP" to "Dynamic Programming" becomes a one-row update).
+</p>
+<p>What remains is the 1NF relation we analyse in the rest of this section:</p>
+<p class="rel">PRACTICE_LOG(user_id, name, email, univ_id, univ_name, team_id, team_name, problem_code, title, rating, submitted_at, verdict, language)</p>
+
+<p>To keep the working short, each attribute gets a one-letter name:</p>
+<table border="1" cellspacing="0" cellpadding="3">
+  <tr><th>U</th><th>N</th><th>M</th><th>I</th><th>J</th><th>G</th><th>K</th><th>P</th><th>T</th><th>R</th><th>S</th><th>V</th><th>L</th></tr>
+  <tr><td>user_id</td><td>name</td><td>email</td><td>univ_id</td><td>univ_name</td><td>team_id</td><td>team_name</td><td>problem_code</td><td>title</td><td>rating</td><td>submitted_at</td><td>verdict</td><td>language</td></tr>
+</table>
+
+<h3>3.4.3 Functional dependencies</h3>
+<p>
+<b>Definition:</b> X → Y (X functionally determines Y) if any two tuples that agree on X
+must also agree on Y. An FD is <b>trivial</b> if Y ⊆ X (e.g. UM → U), otherwise
+<b>non-trivial</b>. From the business rules, the spreadsheet's notes give this set F
+(written exactly as collected, including some redundancy that §3.4.6 removes):
+</p>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:8%">#</th><th style="width:26%">FD</th><th>Reason</th></tr>
+  <tr><td>F1</td><td class="fd">U → N M I G</td><td>a user has one name, e-mail, university, team</td></tr>
+  <tr><td>F2</td><td class="fd">M → U</td><td>e-mail is unique</td></tr>
+  <tr><td>F3</td><td class="fd">I → J</td><td>a university id has one name</td></tr>
+  <tr><td>F4</td><td class="fd">G → K</td><td>a team id has one name</td></tr>
+  <tr><td>F5</td><td class="fd">P → T R</td><td>a problem has one title and rating</td></tr>
+  <tr><td>F6</td><td class="fd">U P S → V L</td><td>one user, one problem, one instant ⇒ one submission</td></tr>
+  <tr><td>F7</td><td class="fd">U M → N</td><td>noted separately on the sheet</td></tr>
+  <tr><td>F8</td><td class="fd">U → J</td><td>"the student's university name"</td></tr>
+  <tr><td>F9</td><td class="fd">U P S → T</td><td>"each submission row shows the problem title"</td></tr>
+</table>
+
+<p><b>Armstrong's axioms</b> are the rules for deriving new FDs from F:</p>
+<ul>
+  <li><b>Reflexivity:</b> if Y ⊆ X then X → Y. &nbsp;(UP → P)</li>
+  <li><b>Augmentation:</b> if X → Y then XZ → YZ. &nbsp;(P → T gives PS → TS)</li>
+  <li><b>Transitivity:</b> if X → Y and Y → Z then X → Z. &nbsp;(U → I, I → J gives U → J)</li>
+  <li>Derived rules: <b>union</b> (X → Y, X → Z ⇒ X → YZ), <b>decomposition</b>
+      (X → YZ ⇒ X → Y), <b>pseudo-transitivity</b> (X → Y, WY → Z ⇒ WX → Z).</li>
+</ul>
+
+<h3 class="brk">3.4.4 Attribute closure and candidate keys</h3>
+<p>
+<b>Definition:</b> the closure X<sup>+</sup> is the set of all attributes that X determines.
+<b>Algorithm:</b> start with result = X; repeatedly, for every FD A → B in F with A ⊆ result,
+add B to result; stop when nothing changes. X is a <b>super key</b> if X<sup>+</sup> contains
+every attribute, and a <b>candidate key</b> if, in addition, no proper subset of X is a super key.
+</p>
+
+<h4>{U, P, S}<sup>+</sup></h4>
+<p class="step">start          : {U, P, S}</p>
+<p class="step">F1 U → NMIG    : {U, P, S, N, M, I, G}</p>
+<p class="step">F3 I → J       : {U, P, S, N, M, I, G, J}</p>
+<p class="step">F4 G → K       : {U, P, S, N, M, I, G, J, K}</p>
+<p class="step">F5 P → TR      : {U, P, S, N, M, I, G, J, K, T, R}</p>
+<p class="step">F6 UPS → VL    : {U, P, S, N, M, I, G, J, K, T, R, V, L} = all 13 attributes <span class="ok">✓ super key</span></p>
+
+<h4>{M, P, S}<sup>+</sup></h4>
+<p class="step">start {M, P, S} → F2 M → U adds U → now {U, P, S} ⊆ result, so (as above) all 13 attributes <span class="ok">✓ super key</span></p>
+
+<h4>Are they minimal?</h4>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:18%">X</th><th style="width:52%">X<sup>+</sup></th><th>Super key?</th></tr>
+  <tr><td class="fd">{U}</td><td class="fd">{U, N, M, I, G, J, K}</td><td>no</td></tr>
+  <tr><td class="fd">{M}</td><td class="fd">{M, U, N, I, G, J, K}</td><td>no</td></tr>
+  <tr><td class="fd">{U, P}</td><td class="fd">{U, P, N, M, I, G, J, K, T, R}</td><td>no — missing S, V, L</td></tr>
+  <tr><td class="fd">{U, S}</td><td class="fd">{U, S, N, M, I, G, J, K}</td><td>no</td></tr>
+  <tr><td class="fd">{P, S}</td><td class="fd">{P, S, T, R}</td><td>no</td></tr>
+</table>
+<p>
+A quick way to see this: <b>P and S never appear on the right-hand side of any FD</b>, so
+they must be in every key. {P, S} alone is not enough, and adding either U or M completes it.
+Hence the <b>candidate keys are {U, P, S} and {M, P, S}</b>. We choose {U, P, S} as the primary key.
+</p>
+<ul>
+  <li><b>Prime attributes</b> (in some candidate key): U, M, P, S.</li>
+  <li><b>Non-prime attributes</b>: N, I, J, G, K, T, R, V, L.</li>
+</ul>
+
+<h3>3.4.5 Closure of a set of FDs (F<sup>+</sup>)</h3>
+<p>
+<b>Definition:</b> F<sup>+</sup> is the set of <i>all</i> FDs that can be derived from F using
+Armstrong's axioms. It is far too large to list (it includes every trivial FD over 13
+attributes), so in practice we use two techniques:
+</p>
+<p><b>(a) Deriving members of F<sup>+</sup> with the axioms:</b></p>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:26%">Derived FD</th><th>Derivation</th></tr>
+  <tr><td class="fd">U → J</td><td>U → I (F1, decomposition), I → J (F3) ⇒ transitivity</td></tr>
+  <tr><td class="fd">M → N</td><td>M → U (F2), U → N (F1, decomposition) ⇒ transitivity</td></tr>
+  <tr><td class="fd">M → K</td><td>M → U, U → G, G → K ⇒ transitivity twice</td></tr>
+  <tr><td class="fd">U P → T</td><td>P → T (F5) ⇒ augmentation with U gives UP → TU ⇒ decomposition</td></tr>
+  <tr><td class="fd">M P S → V L</td><td>M → U (F2) and UPS → VL (F6) ⇒ pseudo-transitivity</td></tr>
+</table>
+<p><b>(b) Membership test using attribute closure:</b> X → Y is in F<sup>+</sup> exactly when Y ⊆ X<sup>+</sup>.</p>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:20%">Is … in F<sup>+</sup>?</th><th style="width:44%">Compute</th><th>Answer</th></tr>
+  <tr><td class="fd">M → K</td><td class="fd">{M}+ = {M,U,N,I,G,J,K} ∋ K</td><td>Yes</td></tr>
+  <tr><td class="fd">I → U</td><td class="fd">{I}+ = {I, J} ∌ U</td><td>No — many students share a university</td></tr>
+  <tr><td class="fd">G → I</td><td class="fd">{G}+ = {G, K} ∌ I</td><td>No — the data does not force a team's university</td></tr>
+</table>
+<p>
+Two FD sets F and G are <b>equivalent</b> (F<sup>+</sup> = G<sup>+</sup>) if every FD of G is in
+F<sup>+</sup> and every FD of F is in G<sup>+</sup>; this is how we check that the minimal cover
+below says the same thing as F.
+</p>
+
+<h3 class="brk">3.4.6 Minimal (canonical) cover</h3>
+<p>
+<b>Definition:</b> a minimal cover F<sub>c</sub> is an FD set equivalent to F in which (1) every
+right-hand side is a single attribute, (2) no left-hand side has an extraneous attribute,
+and (3) no FD is redundant.
+</p>
+
+<p><b>Step 1 — single attribute on the right.</b> Splitting F gives 14 FDs:</p>
+<p class="step">U→N, U→M, U→I, U→G, M→U, I→J, G→K, P→T, P→R, UPS→V, UPS→L, UM→N, U→J, UPS→T</p>
+
+<p><b>Step 2 — remove extraneous left-hand attributes.</b> In XA → B, A is extraneous if B ∈ X<sup>+</sup> (computed with F).</p>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:18%">FD</th><th style="width:22%">Try removing</th><th style="width:36%">Closure</th><th>Result</th></tr>
+  <tr><td class="fd">UM → N</td><td>M</td><td class="fd">{U}+ ∋ N</td><td>M extraneous → <span class="fd">U → N</span> (already present, drop)</td></tr>
+  <tr><td class="fd">UPS → T</td><td>U, then S</td><td class="fd">{PS}+ ∋ T, then {P}+ ∋ T</td><td>→ <span class="fd">P → T</span> (already present, drop)</td></tr>
+  <tr><td class="fd">UPS → V</td><td>U / P / S</td><td class="fd">{PS}+, {US}+, {UP}+ — none contain V</td><td>nothing extraneous</td></tr>
+  <tr><td class="fd">UPS → L</td><td>U / P / S</td><td class="fd">same, none contain L</td><td>nothing extraneous</td></tr>
+</table>
+<p class="note">
+In UM → N, U is <i>also</i> extraneous on its own (M → N holds via M → U → N). Removing U
+first instead of M would end with M → N in place of U → N. Both answers are correct:
+<b>a minimal cover is not unique</b>. We keep U → N because it reads naturally.
+</p>
+
+<p><b>Step 3 — remove redundant FDs.</b> A → B is redundant if B ∈ A<sup>+</sup> computed <i>without</i> that FD.</p>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:15%">FD</th><th style="width:50%">Closure of LHS without it</th><th>Redundant?</th></tr>
+  <tr><td class="fd">U → J</td><td class="fd">{U}+ = {U,N,M,I,G,J,K} — J reached via I → J</td><td><b>Yes, remove</b></td></tr>
+  <tr><td class="fd">U → N</td><td class="fd">{U}+ = {U,M,I,G,J,K}</td><td>No</td></tr>
+  <tr><td class="fd">U → M</td><td class="fd">{U}+ = {U,N,I,G,J,K}</td><td>No</td></tr>
+  <tr><td class="fd">M → U</td><td class="fd">{M}+ = {M}</td><td>No</td></tr>
+  <tr><td class="fd">U → I, U → G, I → J, G → K, P → T, P → R, UPS → V, UPS → L</td><td>the right-hand attribute is not reachable without the FD itself</td><td>No</td></tr>
+</table>
+
+<p><b>Minimal cover</b> (written with the union rule for readability):</p>
+<p class="step">F<sub>c</sub> = { U → N M I G,&nbsp; M → U,&nbsp; I → J,&nbsp; G → K,&nbsp; P → T R,&nbsp; U P S → V L }</p>
+<p>
+Equivalence check: every FD of F<sub>c</sub> is in F, and the three removed FDs (UM → N,
+U → J, UPS → T) were each shown above to follow from the rest, so F<sub>c</sub><sup>+</sup> = F<sup>+</sup>.
+</p>
+
+<h3 class="brk">3.4.7 Second Normal Form (2NF)</h3>
+<p>
+<b>Definition:</b> a relation is in 2NF if it is in 1NF and no <b>non-prime</b> attribute is
+<b>partially dependent</b> on a candidate key (i.e. depends on only part of a composite key).
+</p>
+<p>PRACTICE_LOG has key {U, P, S}. Checking F<sub>c</sub>:</p>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:20%">FD</th><th>Analysis</th><th style="width:18%">2NF?</th></tr>
+  <tr><td class="fd">U → N M I G</td><td>U is a proper part of the key; N, I, G are non-prime</td><td><b>Violation</b> (partial)</td></tr>
+  <tr><td class="fd">P → T R</td><td>P is a proper part of the key; T, R non-prime</td><td><b>Violation</b> (partial)</td></tr>
+  <tr><td class="fd">M → U</td><td>U is prime, so this does not violate 2NF</td><td>OK</td></tr>
+  <tr><td class="fd">U P S → V L</td><td>full dependency on the whole key</td><td>OK</td></tr>
+</table>
+<p>
+<b>Decomposition:</b> for each partial dependency X → Y, take out X<sup>+</sup> as its own relation.
+</p>
+<p class="rel">R1 = USER_INFO(<u>U</u>, N, M, I, J, G, K)&nbsp;&nbsp;&nbsp;← {U}<sup>+</sup></p>
+<p class="rel">R2 = PROBLEM(<u>P</u>, T, R)&nbsp;&nbsp;&nbsp;← {P}<sup>+</sup></p>
+<p class="rel">R3 = SUBMISSION(<u>U, P, S</u>, V, L)&nbsp;&nbsp;&nbsp;← key + what depends on the whole key</p>
+<p>
+R1 and R2 have single-attribute keys, so they cannot have partial dependencies; in R3, V and L
+depend on the whole key. All three are in 2NF. The insertion anomaly for problems is gone:
+a problem can now exist with no submissions.
+</p>
+
+<h3>3.4.8 Third Normal Form (3NF)</h3>
+<p>
+<b>Definition:</b> a relation is in 3NF if for every non-trivial FD X → A, either
+<b>X is a super key</b> or <b>A is a prime attribute</b>. Equivalently: it is in 2NF and
+no non-prime attribute is <b>transitively dependent</b> on a key.
+</p>
+<p>
+R1 = USER_INFO(U, N, M, I, J, G, K) violates 3NF: I → J and G → K hold, but neither I nor G is
+a super key and J, K are non-prime. These are transitive dependencies U → I → J and U → G → K —
+the source of the "rename the university in every row" update anomaly.
+</p>
+<p><b>Decomposition</b> of R1:</p>
+<p class="rel">R1a = USER(<u>U</u>, N, M, I, G)&nbsp;&nbsp;&nbsp;FDs: U → NMIG, M → U</p>
+<p class="rel">R1b = UNIVERSITY(<u>I</u>, J)&nbsp;&nbsp;&nbsp;FDs: I → J</p>
+<p class="rel">R1c = TEAM(<u>G</u>, K)&nbsp;&nbsp;&nbsp;FDs: G → K</p>
+<p>
+Now every determinant in every relation is a key: in USER, U and M are both candidate keys;
+in UNIVERSITY, TEAM, PROBLEM and SUBMISSION the only determinant is the primary key.
+All relations are in 3NF.
+</p>
+
+<h4>Cross-check with the 3NF synthesis algorithm</h4>
+<p>
+The textbook synthesis algorithm builds one relation per FD of F<sub>c</sub> — (U,N,M,I,G),
+(M,U), (I,J), (G,K), (P,T,R), (U,P,S,V,L) — drops (M,U) because it is contained in
+(U,N,M,I,G), and adds a key relation only if no relation already contains a candidate key
+((U,P,S) is inside SUBMISSION, so none is added). The result is exactly the decomposition
+above. Synthesis is guaranteed to be <b>lossless and dependency preserving</b>; §3.4.10 and
+§3.4.11 prove both directly.
+</p>
+
+<h3>3.4.9 BCNF check (beyond 3NF)</h3>
+<p>
+BCNF is stricter: for every non-trivial X → A, X must be a super key (no exception for
+prime A). Every determinant in our decomposition is a candidate key, so all relations
+are also in <b>BCNF</b>.
+</p>
+
+<h3 class="brk">3.4.10 Lossless-join decomposition</h3>
+<p>
+<b>Definition:</b> decomposing R into R1 … Rn is lossless if joining the pieces always gives
+back exactly R — no tuples lost and, more importantly, no <b>spurious</b> tuples added.
+</p>
+<p>
+<b>Binary test:</b> R → {R1, R2} is lossless if R1 ∩ R2 → R1 or R1 ∩ R2 → R2 is in F<sup>+</sup>
+(the common attributes form a key of one side). Every split we made passes it:
+</p>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:40%">Split</th><th style="width:16%">R1 ∩ R2</th><th>Test</th></tr>
+  <tr><td>PRACTICE_LOG → USER_INFO + (U,P,S,T,R,V,L)</td><td class="fd">{U}</td><td>U → USER_INFO <span class="ok">✓</span></td></tr>
+  <tr><td>(U,P,S,T,R,V,L) → PROBLEM + SUBMISSION</td><td class="fd">{P}</td><td>P → PROBLEM <span class="ok">✓</span></td></tr>
+  <tr><td>USER_INFO → (U,N,M,I,G,K) + UNIVERSITY</td><td class="fd">{I}</td><td>I → UNIVERSITY <span class="ok">✓</span></td></tr>
+  <tr><td>(U,N,M,I,G,K) → USER + TEAM</td><td class="fd">{G}</td><td>G → TEAM <span class="ok">✓</span></td></tr>
+</table>
+
+<p>
+<b>Tableau (chase) test for the whole decomposition at once.</b> Build one row per relation,
+writing <b>a</b> in the columns the relation has and b<sub>i</sub> elsewhere. Apply the FDs: whenever
+two rows agree on the left side of an FD, make their right-side values equal (prefer <b>a</b>).
+If some row becomes all <b>a</b>, the decomposition is lossless.
+</p>
+<p><i>Initial tableau:</i></p>
+<table class="chase" border="1" cellspacing="0" cellpadding="3">
+  <tr><th></th><th>U</th><th>N</th><th>M</th><th>I</th><th>J</th><th>G</th><th>K</th><th>P</th><th>T</th><th>R</th><th>S</th><th>V</th><th>L</th></tr>
+  <tr><td>USER</td><td><b>a</b></td><td><b>a</b></td><td><b>a</b></td><td><b>a</b></td><td>b<sub>1</sub></td><td><b>a</b></td><td>b<sub>1</sub></td><td>b<sub>1</sub></td><td>b<sub>1</sub></td><td>b<sub>1</sub></td><td>b<sub>1</sub></td><td>b<sub>1</sub></td><td>b<sub>1</sub></td></tr>
+  <tr><td>UNIVERSITY</td><td>b<sub>2</sub></td><td>b<sub>2</sub></td><td>b<sub>2</sub></td><td><b>a</b></td><td><b>a</b></td><td>b<sub>2</sub></td><td>b<sub>2</sub></td><td>b<sub>2</sub></td><td>b<sub>2</sub></td><td>b<sub>2</sub></td><td>b<sub>2</sub></td><td>b<sub>2</sub></td><td>b<sub>2</sub></td></tr>
+  <tr><td>TEAM</td><td>b<sub>3</sub></td><td>b<sub>3</sub></td><td>b<sub>3</sub></td><td>b<sub>3</sub></td><td>b<sub>3</sub></td><td><b>a</b></td><td><b>a</b></td><td>b<sub>3</sub></td><td>b<sub>3</sub></td><td>b<sub>3</sub></td><td>b<sub>3</sub></td><td>b<sub>3</sub></td><td>b<sub>3</sub></td></tr>
+  <tr><td>PROBLEM</td><td>b<sub>4</sub></td><td>b<sub>4</sub></td><td>b<sub>4</sub></td><td>b<sub>4</sub></td><td>b<sub>4</sub></td><td>b<sub>4</sub></td><td>b<sub>4</sub></td><td><b>a</b></td><td><b>a</b></td><td><b>a</b></td><td>b<sub>4</sub></td><td>b<sub>4</sub></td><td>b<sub>4</sub></td></tr>
+  <tr><td>SUBMISSION</td><td><b>a</b></td><td>b<sub>5</sub></td><td>b<sub>5</sub></td><td>b<sub>5</sub></td><td>b<sub>5</sub></td><td>b<sub>5</sub></td><td>b<sub>5</sub></td><td><b>a</b></td><td>b<sub>5</sub></td><td>b<sub>5</sub></td><td><b>a</b></td><td><b>a</b></td><td><b>a</b></td></tr>
+</table>
+<p class="small">
+Steps: USER and SUBMISSION agree on U, so U → NMIG copies <b>a</b> into N, M, I, G of SUBMISSION.
+Now USER, UNIVERSITY and SUBMISSION agree on I, so I → J gives J = <b>a</b>; likewise G → K gives K = <b>a</b>.
+PROBLEM and SUBMISSION agree on P, so P → TR gives T, R = <b>a</b>.
+</p>
+<p><i>Final tableau</i> (underlined = changed by the chase):</p>
+<table class="chase" border="1" cellspacing="0" cellpadding="3">
+  <tr><th></th><th>U</th><th>N</th><th>M</th><th>I</th><th>J</th><th>G</th><th>K</th><th>P</th><th>T</th><th>R</th><th>S</th><th>V</th><th>L</th></tr>
+  <tr><td>USER</td><td><b>a</b></td><td><b>a</b></td><td><b>a</b></td><td><b>a</b></td><td><b><u>a</u></b></td><td><b>a</b></td><td><b><u>a</u></b></td><td>b<sub>1</sub></td><td>b<sub>1</sub></td><td>b<sub>1</sub></td><td>b<sub>1</sub></td><td>b<sub>1</sub></td><td>b<sub>1</sub></td></tr>
+  <tr><td>UNIVERSITY</td><td>b<sub>2</sub></td><td>b<sub>2</sub></td><td>b<sub>2</sub></td><td><b>a</b></td><td><b>a</b></td><td>b<sub>2</sub></td><td>b<sub>2</sub></td><td>b<sub>2</sub></td><td>b<sub>2</sub></td><td>b<sub>2</sub></td><td>b<sub>2</sub></td><td>b<sub>2</sub></td><td>b<sub>2</sub></td></tr>
+  <tr><td>TEAM</td><td>b<sub>3</sub></td><td>b<sub>3</sub></td><td>b<sub>3</sub></td><td>b<sub>3</sub></td><td>b<sub>3</sub></td><td><b>a</b></td><td><b>a</b></td><td>b<sub>3</sub></td><td>b<sub>3</sub></td><td>b<sub>3</sub></td><td>b<sub>3</sub></td><td>b<sub>3</sub></td><td>b<sub>3</sub></td></tr>
+  <tr><td>PROBLEM</td><td>b<sub>4</sub></td><td>b<sub>4</sub></td><td>b<sub>4</sub></td><td>b<sub>4</sub></td><td>b<sub>4</sub></td><td>b<sub>4</sub></td><td>b<sub>4</sub></td><td><b>a</b></td><td><b>a</b></td><td><b>a</b></td><td>b<sub>4</sub></td><td>b<sub>4</sub></td><td>b<sub>4</sub></td></tr>
+  <tr><td>SUBMISSION</td><td><b>a</b></td><td><b><u>a</u></b></td><td><b><u>a</u></b></td><td><b><u>a</u></b></td><td><b><u>a</u></b></td><td><b><u>a</u></b></td><td><b><u>a</u></b></td><td><b>a</b></td><td><b><u>a</u></b></td><td><b><u>a</u></b></td><td><b>a</b></td><td><b>a</b></td><td><b>a</b></td></tr>
+</table>
+<p>The SUBMISSION row is all <b>a</b>, so the decomposition is <b>lossless</b>. <span class="ok">✓</span></p>
+
+<h4>Counter-example: a lossy decomposition</h4>
+<p>
+Suppose SUBMISSION(U, P, S, V, L) were split into A(U, P) and B(P, S, V, L). The common
+attribute is P, and P is a key of neither A nor B, so the test fails. With the sample data:
+</p>
+<table border="1" cellspacing="0" cellpadding="3">
+  <tr><th colspan="5">SUBMISSION (original)</th></tr>
+  <tr><th>U</th><th>P</th><th>S</th><th>V</th><th>L</th></tr>
+  <tr><td>1</td><td>455A</td><td>02-09 18:30</td><td>OK</td><td>C++</td></tr>
+  <tr><td>2</td><td>455A</td><td>02-09 19:05</td><td>OK</td><td>Py</td></tr>
+</table>
+<p>
+A = {(1, 455A), (2, 455A)}, B = {(455A, 18:30, OK, C++), (455A, 19:05, OK, Py)}.
+A ⋈ B has <b>4</b> rows, including (1, 455A, 19:05, OK, Py) — a submission Saharsh never made.
+These <b>spurious tuples</b> mean information has been lost: we can no longer tell who submitted when.
+</p>
+
+<h3 class="brk">3.4.11 Dependency preservation</h3>
+<p>
+<b>Definition:</b> a decomposition R1 … Rn is dependency preserving if
+(F<sub>1</sub> ∪ F<sub>2</sub> ∪ … ∪ F<sub>n</sub>)<sup>+</sup> = F<sup>+</sup>, where F<sub>i</sub> is the projection of
+F<sup>+</sup> onto R<sub>i</sub> (the FDs that use only attributes of R<sub>i</sub>). If it holds, every
+constraint can be checked inside a single table, without joins.
+</p>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:22%">Relation</th><th style="width:38%">Projected FDs F<sub>i</sub></th><th>FDs of F<sub>c</sub> covered</th></tr>
+  <tr><td>USER(U,N,M,I,G)</td><td class="fd">U → NMIG, M → U</td><td>U → NMIG, M → U</td></tr>
+  <tr><td>UNIVERSITY(I,J)</td><td class="fd">I → J</td><td>I → J</td></tr>
+  <tr><td>TEAM(G,K)</td><td class="fd">G → K</td><td>G → K</td></tr>
+  <tr><td>PROBLEM(P,T,R)</td><td class="fd">P → TR</td><td>P → TR</td></tr>
+  <tr><td>SUBMISSION(U,P,S,V,L)</td><td class="fd">UPS → VL</td><td>UPS → VL</td></tr>
+</table>
+<p>
+Each FD of F<sub>c</sub> lies completely inside one relation, so the union of the projections is
+F<sub>c</sub> itself, whose closure equals F<sup>+</sup>. The decomposition is <b>dependency preserving</b>. <span class="ok">✓</span>
+</p>
+
+<h4>Counter-example: a decomposition that loses a dependency</h4>
+<p>
+Suppose USER_INFO(U, N, M, I, J, G, K) had been split into X(U, N, M, I, G, K) and Y(U, J)
+(the university name stored against each user). It is lossless (U is a key of both), but
+I → J is no longer inside any single table. Testing it with the preservation algorithm:
+</p>
+<p class="step">result = {I}</p>
+<p class="step">on X: ({I} ∩ X)<sup>+</sup> ∩ X = {I, J} ∩ X = {I}   → no change</p>
+<p class="step">on Y: ({I} ∩ Y)<sup>+</sup> ∩ Y = ∅                → no change</p>
+<p class="step">J ∉ result ⇒ I → J is <b>not preserved</b></p>
+<p>
+The database could then store two different names for the same univ_id and nothing would
+stop it short of joining X and Y on every insert. Our chosen decomposition avoids this.
+</p>
+
+<h3>3.4.12 Final tables and their normal forms</h3>
+<p>
+The final schema (§3.3) adds a few attributes that do not change the analysis —
+password_hash, cf_handle, cf_rating and cf_max_rating on User, city on University — and the
+Topic, Problem_Topic, Sheet and Sheet_Problem tables. Their FDs:
+</p>
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th style="width:17%">Table</th><th style="width:48%">Non-trivial FDs</th><th style="width:20%">Every determinant a key?</th><th>Normal form</th></tr>
+  <tr><td>University</td><td class="fd">univ_id → univ_name, city<br>univ_name → univ_id</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>Team</td><td class="fd">team_id → team_name<br>team_name → team_id</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>User</td><td class="fd">user_id → name, email, password_hash, cf_handle, cf_rating, cf_max_rating, univ_id, team_id<br>email → user_id</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>Topic</td><td class="fd">topic_id → topic_name<br>topic_name → topic_id</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>Problem</td><td class="fd">problem_code → title, rating</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>Problem_Topic</td><td>none (all-key relation)</td><td>—</td><td>BCNF</td></tr>
+  <tr><td>Submission</td><td class="fd">user_id, problem_code, submitted_at → verdict, language</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>Sheet</td><td class="fd">sheet_id → title, team_id, deadline</td><td>yes</td><td>BCNF</td></tr>
+  <tr><td>Sheet_Problem</td><td class="fd">sheet_id, problem_code → position<br>sheet_id, position → problem_code</td><td>yes (two overlapping candidate keys)</td><td>BCNF</td></tr>
+</table>
+<p class="note">
+<b>Design decision worth noting:</b> a problem's URL and difficulty band are functions of problem_code and rating; storing
+them would add the FDs problem_code → url and rating → difficulty, the second of which is a
+transitive dependency. They are therefore derived, not stored.
+
+The Codeforces rating, by contrast, <i>is</i> stored (cf_rating, cf_max_rating): it cannot be
+computed from our tables, because it comes from Codeforces' own contest history. It is a
+snapshot refreshed on every sync, and depends only on user_id, so User stays in BCNF.
+</p>
+
+<!-- ===================================================================== 3.5 -->
+<h2 class="brk">3.5. Appendix — SQL implementation</h2>
+<p>
+PostgreSQL DDL for the nine tables, the team-size trigger, and the views that compute
+derived values (<code>docs/lite/schema-lite.sql</code>). Sample data is in
+<code>seed-lite.sql</code>. Tested on PostgreSQL.
+</p>
+<pre>{{SCHEMA_SQL}}</pre>
+
+<h3 class="brk">Sample queries</h3>
+<p>From <code>docs/lite/queries-lite.sql</code>; each was run against the sample data.</p>
+<pre>{{QUERIES_SQL}}</pre>
+
+</body>
+</html>

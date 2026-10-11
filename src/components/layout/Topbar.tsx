@@ -1,6 +1,8 @@
-import { LogOut, Menu, Search, Settings } from 'lucide-react'
+import { useState } from 'react'
+import { LogOut, Menu, Search, UserRound } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
+import { Initials } from '@/components/bits'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -11,57 +13,67 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import { useAuth } from '@/lib/auth'
+import { useAuth, useMe } from '@/lib/auth'
 
-export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
-  const { user, signOut } = useAuth()
+export function Topbar({ menuOpen, onMenuClick }: { menuOpen?: boolean; onMenuClick: () => void }) {
+  const me = useMe()
+  const { signOut } = useAuth()
   const navigate = useNavigate()
+  const [q, setQ] = useState('')
 
   return (
-    <header className="sticky top-0 z-30 flex h-[72px] items-center gap-3 border-b border-border/70 bg-background/80 px-4 backdrop-blur-xl sm:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background px-4 sm:px-6">
       <Button
         variant="ghost"
         size="icon"
         className="lg:hidden"
         onClick={onMenuClick}
         aria-label="Open navigation"
+        aria-expanded={menuOpen}
       >
         <Menu />
       </Button>
 
-      <div className="relative hidden max-w-md flex-1 sm:block">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <form
+        role="search"
+        className="relative hidden max-w-md flex-1 sm:block"
+        onSubmit={(e) => {
+          e.preventDefault()
+          navigate(`/app/problems?q=${encodeURIComponent(q.trim())}`)
+        }}
+      >
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search problems, sheets, teams…"
-          className="h-10 rounded-full pl-10"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search problems by code or title…"
+          aria-label="Search problems"
+          className="h-9 rounded-full pl-10"
         />
-      </div>
+      </form>
 
-      <div className="flex flex-1 items-center justify-end gap-2">
+      <div className="flex flex-1 items-center justify-end">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className="rounded-full ring-offset-2 ring-offset-background transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="rounded-full transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground"
               aria-label="Account menu"
             >
-              <img
-                src={user?.avatar}
-                alt=""
-                className="h-10 w-10 rounded-full bg-primary/20"
-              />
+              <Initials name={me.name} />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>{user?.name}</DropdownMenuLabel>
+            <DropdownMenuLabel>
+              <span className="block truncate">{me.name}</span>
+              <span className="block truncate text-[11px] font-normal normal-case tracking-normal text-muted-foreground">{me.email}</span>
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => navigate('/app/settings')}>
-              <Settings className="h-4 w-4" /> Settings
+            <DropdownMenuItem onSelect={() => navigate('/app/profile')}>
+              <UserRound className="h-4 w-4" /> Profile
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              onSelect={() => {
-                signOut()
+              onSelect={async () => {
+                await signOut()
                 navigate('/')
               }}
             >

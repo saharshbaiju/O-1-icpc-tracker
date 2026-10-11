@@ -2,21 +2,22 @@ import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
+/* Monochrome chips: black fill, grey fill, or a thin outlined chip. Never colour. */
 const badgeVariants = cva(
-  'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors whitespace-nowrap',
+  'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium leading-4 whitespace-nowrap',
   {
     variants: {
       variant: {
-        default: 'bg-primary/15 text-primary',
-        secondary: 'bg-secondary text-muted-foreground',
-        outline: 'border border-border text-muted-foreground',
-        success: 'bg-success/15 text-success',
-        warning: 'bg-warning/15 text-warning',
-        destructive: 'bg-destructive/15 text-destructive',
-        lime: 'bg-lime/15 text-lime',
-        easy: 'bg-easy/15 text-easy',
-        medium: 'bg-medium/15 text-medium',
-        hard: 'bg-hard/15 text-hard',
+        default: 'border-primary bg-primary text-primary-foreground',
+        secondary: 'border-border bg-transparent text-foreground',
+        outline: 'border-border bg-transparent text-foreground',
+        success: 'border-primary bg-primary text-primary-foreground',
+        warning: 'border-border bg-secondary text-foreground',
+        destructive: 'border-foreground bg-transparent text-foreground',
+        lime: 'border-primary bg-primary text-primary-foreground',
+        easy: 'border-border bg-transparent text-muted-foreground',
+        medium: 'border-border bg-secondary text-foreground',
+        hard: 'border-primary bg-primary text-primary-foreground',
       },
     },
     defaultVariants: { variant: 'default' },

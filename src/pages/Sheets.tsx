@@ -1,23 +1,11 @@
-import { useMemo, useState } from 'react'
-import {
-  ArrowUpRight,
-  CalendarClock,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
-  LibraryBig,
-  ListChecks,
-  Plus,
-  Sparkles,
-  Users,
-} from 'lucide-react'
+import { useState } from 'react'
+import { ArrowUpRight, PanelRight, Play, Plus, Trash2, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
+import { DifficultyBadge, Empty, ErrorNote, Initials, Loaded, SqlPeek, StatusIcon } from '@/components/bits'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -25,6 +13,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -36,499 +25,442 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Textarea } from '@/components/ui/textarea'
-import { useAuth } from '@/lib/auth'
-import {
-  ASSIGNED_TO_ME,
-  deadlineLabel,
-  deadlineTone,
-  DIFFICULTIES,
-  difficultyVariant,
-  formatDate,
-  people,
-  problems,
-  ROLE_LABEL,
-  sheets,
-  TOPICS,
-} from '@/lib/data'
-import type { Sheet } from '@/lib/data'
+import { api, attempt, openBeside, problemUrl, useApi, type CfProblem, type SheetDetail, type SheetSummary } from '@/lib/api'
+import { useMe } from '@/lib/auth'
+import { deadlineLabel, formatDate } from '@/lib/format'
+import { useDebounced } from '@/lib/useDebounced'
 import { cn } from '@/lib/utils'
 
-const ACCENT: Record<string, { tile: string; bar: string; rule: string }> = {
-  'chart-1': { tile: 'bg-chart-1/15 text-chart-1', bar: 'bg-chart-1', rule: 'bg-chart-1' },
-  'chart-2': { tile: 'bg-chart-2/15 text-chart-2', bar: 'bg-chart-2', rule: 'bg-chart-2' },
-  'chart-3': { tile: 'bg-chart-3/15 text-chart-3', bar: 'bg-chart-3', rule: 'bg-chart-3' },
-  'chart-4': { tile: 'bg-chart-4/15 text-chart-4', bar: 'bg-chart-4', rule: 'bg-chart-4' },
-  'chart-5': { tile: 'bg-chart-5/15 text-chart-5', bar: 'bg-chart-5', rule: 'bg-chart-5' },
-}
+const SQL = `
+-- v_sheet_progress: for each member of the sheet's team, solved / total
+SELECT sh.sheet_id, u.user_id, u.name,
+       count(sp.problem_code) AS total,
+       count(sp.problem_code) FILTER (WHERE EXISTS (
+         SELECT 1 FROM submission s
+         WHERE s.user_id = u.user_id AND s.problem_code = sp.problem_code
+           AND s.verdict = 'OK')) AS solved
+FROM sheet sh
+JOIN app_user u       ON u.team_id = sh.team_id
+JOIN sheet_problem sp ON sp.sheet_id = sh.sheet_id
+GROUP BY sh.sheet_id, u.user_id, u.name;
 
-function accentFor(color: string) {
-  return ACCENT[color] ?? ACCENT['chart-1']
-}
-
-const TAB_LABEL = {
-  assigned: 'Assigned to me',
-  progress: 'In progress',
-  completed: 'Completed',
-  all: 'All sheets',
-} as const
-
-type TabKey = keyof typeof TAB_LABEL
+-- Creating a sheet = 1 row in sheet + 1 row per problem in sheet_problem,
+-- all in one transaction (backend/routes/sheets.py).`
 
 export default function Sheets() {
-  const { role } = useAuth()
-  const canAuthor = role === 'mentor'
+  const me = useMe()
+  const list = useApi<SheetSummary[]>(me.team_id ? '/sheets' : null)
+  const [selected, setSelected] = useState<number | null>(null)
 
-  const [tab, setTab] = useState<TabKey>('assigned')
-  const [createOpen, setCreateOpen] = useState(false)
-  const [checked, setChecked] = useState<string[]>(() =>
-    problems.slice(0, 8).filter((p) => p.status === 'solved').map((p) => p.id)
-  )
-
-  const featured = sheets[0]
-  const featuredProblems = useMemo(() => problems.slice(0, 8), [])
-  const featuredAccent = accentFor(featured.color)
-  const featuredPct = Math.round(
-    (checked.length / featuredProblems.length) * 100
-  )
-
-  const byTab = useMemo<Record<TabKey, Sheet[]>>(
-    () => ({
-      assigned: sheets.filter((s) => ASSIGNED_TO_ME.includes(s.id)),
-      progress: sheets.filter((s) => s.completed > 0 && s.completed < s.total),
-      completed: sheets.filter((s) => s.completed >= s.total),
-      all: sheets,
-    }),
-    []
-  )
-
-  const roster = useMemo(
-    () =>
-      people
-        .filter((p) => p.role === 'student')
-        .slice(0, 6)
-        .map((p, i) => ({
-          id: p.id,
-          name: p.name,
-          handle: p.handle,
-          avatar: p.avatar,
-          sheet: sheets[i % sheets.length].title,
-          pct: 24 + ((i * 17) % 70),
-        })),
-    []
-  )
-
-  function toggleProblem(id: string) {
-    setChecked((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    )
-  }
-
-  function SheetCard({ s }: { s: Sheet }) {
-    const accent = accentFor(s.color)
-    const pct = Math.round((s.completed / s.total) * 100)
-    const done = s.completed >= s.total
-
+  if (!me.team_id) {
     return (
-      <Card className="flex flex-col overflow-hidden">
-        <div className={cn('h-1 w-full', accent.rule)} />
-        <div className="flex flex-1 flex-col p-6">
-          <div className="flex items-start justify-between gap-3">
-            <span
-              className={cn(
-                'grid h-11 w-11 shrink-0 place-items-center rounded-2xl',
-                accent.tile
-              )}
-            >
-              <ListChecks className="h-5 w-5" />
-            </span>
-            <Badge variant={difficultyVariant(s.difficulty)}>
-              {s.difficulty}
-            </Badge>
-          </div>
-
-          <h3 className="mt-4 text-base font-medium tracking-tight">{s.title}</h3>
-          <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">
-            {s.description}
-          </p>
-
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span>{s.author}</span>
-            <Badge variant="secondary">{ROLE_LABEL[s.authorRole]}</Badge>
-          </div>
-
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {s.topics.map((t) => (
-              <Badge key={t} variant="outline">
-                {t}
-              </Badge>
-            ))}
-          </div>
-
-          <div className="mt-5">
-            <div className="flex items-baseline justify-between text-xs">
-              <span className="text-muted-foreground">
-                {s.completed} / {s.total} solved
-              </span>
-              <span className="font-medium">{pct}%</span>
-            </div>
-            <Progress
-              value={pct}
-              className="mt-2"
-              indicatorClassName={accent.bar}
-            />
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-            <span
-              className={cn('inline-flex items-center gap-1.5', deadlineTone(s.deadline))}
-            >
-              <Clock className="h-3.5 w-3.5" />
-              {formatDate(s.deadline)} · {deadlineLabel(s.deadline)}
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-              <Users className="h-3.5 w-3.5" />
-              {s.assigned} assigned
-            </span>
-          </div>
-
-          <div className="mt-5 flex items-center gap-2 pt-1">
-            <Button
-              size="sm"
-              variant={done ? 'secondary' : 'contrast'}
-              className="flex-1"
-              asChild
-            >
-              <Link to="/app/problems">
-                {done ? 'Review' : 'Continue'}
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Link>
-            </Button>
-            {done && (
-              <span className="inline-flex items-center gap-1 text-xs text-success">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Done
-              </span>
-            )}
-          </div>
-        </div>
-      </Card>
+      <div className="space-y-5">
+        <PageHeader title="Sheets" description="Practice lists shared by a team." />
+        <Empty>
+          Sheets belong to a team.{' '}
+          <Link to="/app/team" className="text-foreground underline underline-offset-2">
+            Join or create a team
+          </Link>{' '}
+          first.
+        </Empty>
+      </div>
     )
   }
+
+  const sheets = list.data ?? []
+  const current = sheets.find((s) => s.sheet_id === selected) ?? sheets[0]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
-        title="Practice Sheets"
-        description="Topic-wise and custom problem sets curated by your mentors, with deadlines, progress tracking, and assignment history."
+        title="Sheets"
+        description={`Ordered practice lists for ${me.team_name}. Progress comes straight from submissions.`}
         actions={
-          canAuthor ? (
-            <Button size="pill" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4" /> Create sheet
-            </Button>
-          ) : (
-            <Button size="pill" variant="outline" asChild>
-              <Link to="/app/resources">
-                <LibraryBig className="h-4 w-4" /> Browse public sheets
-              </Link>
-            </Button>
-          )
+          <NewSheetDialog
+            onCreated={(id) => {
+              setSelected(id)
+              list.reload()
+            }}
+          />
         }
       />
 
-      {/* -------------------------------------------------- Tabs + grid */}
-      <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <TabsList>
-            {(Object.keys(TAB_LABEL) as TabKey[]).map((k) => (
-              <TabsTrigger key={k} value={k}>
-                {TAB_LABEL[k]}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          <span className="text-xs text-muted-foreground">
-            {byTab[tab].length} sheet{byTab[tab].length === 1 ? '' : 's'} ·{' '}
-            {byTab[tab].reduce((n, s) => n + s.total, 0)} problems
-          </span>
-        </div>
+      <Loaded state={list}>
+        {() =>
+          sheets.length === 0 ? (
+            <Empty>Your team has no sheets yet. Create the first one.</Empty>
+          ) : (
+            <div className="grid gap-5 lg:grid-cols-12">
+              <ul className="space-y-2 lg:col-span-4">
+                {sheets.map((s) => {
+                  const active = current?.sheet_id === s.sheet_id
+                  return (
+                    <li key={s.sheet_id}>
+                      <button
+                        onClick={() => setSelected(s.sheet_id)}
+                        aria-current={active}
+                        className={cn(
+                          'w-full rounded-xl border bg-card p-4 text-left transition-colors',
+                          active ? 'border-foreground' : 'border-border hover:bg-secondary/60'
+                        )}
+                      >
+                        <div className="flex items-baseline justify-between gap-3">
+                          <p className="truncate text-sm font-medium">{s.title}</p>
+                          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                            {s.solved}/{s.total}
+                          </span>
+                        </div>
+                        <Progress value={s.total ? (100 * s.solved) / s.total : 0} className="mt-3 h-1.5" />
+                        <p className="mt-2 text-[11px] text-muted-foreground">
+                          {s.deadline ? `${formatDate(s.deadline)} · ` : ''}
+                          {s.total > 0 && s.solved === s.total ? 'You finished this' : deadlineLabel(s.deadline)}
+                        </p>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
 
-        {(Object.keys(TAB_LABEL) as TabKey[]).map((k) => (
-          <TabsContent key={k} value={k}>
-            {byTab[k].length === 0 ? (
-              <Card className="flex flex-col items-center gap-3 py-16 text-center">
-                <span className="grid h-14 w-14 place-items-center rounded-2xl bg-secondary text-muted-foreground">
-                  <ListChecks className="h-6 w-6" />
-                </span>
-                <p className="text-sm font-medium">Nothing here yet</p>
-                <p className="max-w-sm text-xs text-muted-foreground">
-                  Sheets appear here once a mentor assigns them or you start
-                  solving.
-                </p>
-              </Card>
-            ) : (
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {byTab[k].map((s) => (
-                  <SheetCard key={s.id} s={s} />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        ))}
-      </Tabs>
-
-      {/* -------------------------------------------------- Featured sheet */}
-      <div className="grid gap-5 lg:grid-cols-3">
-        <Card className={cn('p-6', canAuthor ? 'lg:col-span-2' : 'lg:col-span-3')}>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <span
-                className={cn(
-                  'grid h-11 w-11 shrink-0 place-items-center rounded-2xl',
-                  featuredAccent.tile
-                )}
-              >
-                <Sparkles className="h-5 w-5" />
-              </span>
-              <div>
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  <h2 className="text-sm font-medium">Continue where you left off</h2>
-                </div>
-                <p className="mt-1 text-lg font-medium tracking-tight">
-                  {featured.title}
-                </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {featured.author} · {featured.total} problems · due{' '}
-                  {formatDate(featured.deadline)}
-                </p>
-              </div>
-            </div>
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/app/problems">
-                Open in repository <ArrowUpRight className="h-3.5 w-3.5" />
-              </Link>
-            </Button>
-          </div>
-
-          <div className="mt-6">
-            <div className="flex items-baseline justify-between text-xs">
-              <span className="text-muted-foreground">
-                {checked.length} of {featuredProblems.length} checked in this
-                section
-              </span>
-              <span className="font-medium">{featuredPct}%</span>
-            </div>
-            <Progress
-              value={featuredPct}
-              className="mt-2 h-2.5"
-              indicatorClassName={featuredAccent.bar}
-            />
-          </div>
-
-          <ul className="mt-5 divide-y divide-border/50">
-            {featuredProblems.map((p) => {
-              const isChecked = checked.includes(p.id)
-              return (
-                <li
-                  key={p.id}
-                  className="flex flex-wrap items-center gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-secondary/40"
-                >
-                  <Checkbox
-                    checked={isChecked}
-                    onCheckedChange={() => toggleProblem(p.id)}
-                    aria-label={`Mark ${p.title}`}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-mono text-[11px] text-muted-foreground">
-                      {p.code} · {p.platform}
-                    </p>
-                    <p
-                      className={cn(
-                        'truncate text-sm',
-                        isChecked && 'text-muted-foreground line-through'
-                      )}
-                    >
-                      {p.title}
-                    </p>
-                  </div>
-                  <Badge variant={difficultyVariant(p.difficulty)}>
-                    {p.difficulty}
-                  </Badge>
-                  <span className="w-12 text-right text-sm tabular-nums text-muted-foreground">
-                    {p.rating}
-                  </span>
-                  <span
-                    className={cn(
-                      'w-20 text-right text-xs',
-                      isChecked
-                        ? 'text-success'
-                        : p.status === 'attempted'
-                          ? 'text-warning'
-                          : 'text-muted-foreground'
-                    )}
-                  >
-                    {isChecked
-                      ? 'Solved'
-                      : p.status === 'attempted'
-                        ? 'Attempted'
-                        : 'Todo'}
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
-
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-4">
-            <span
-              className={cn(
-                'inline-flex items-center gap-1.5 text-xs',
-                deadlineTone(featured.deadline)
+              {current && (
+                <SheetPanel
+                  key={current.sheet_id}
+                  sheetId={current.sheet_id}
+                  onDeleted={() => {
+                    setSelected(null)
+                    list.reload()
+                  }}
+                />
               )}
-            >
-              <CalendarClock className="h-3.5 w-3.5" />
-              {deadlineLabel(featured.deadline)} · {featured.assigned} students
-              assigned
-            </span>
-            <Button size="sm" variant="contrast" asChild>
-              <Link to="/app/problems">Solve next problem</Link>
-            </Button>
-          </div>
-        </Card>
-
-        {/* ------------------------------------------ Mentor assignments */}
-        {canAuthor && (
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-primary" />
-                <h2 className="text-sm font-medium">Assignments</h2>
-              </div>
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/app/leaderboard">
-                  All <ChevronRight className="h-3.5 w-3.5" />
-                </Link>
-              </Button>
             </div>
+          )
+        }
+      </Loaded>
 
-            <ul className="mt-5 space-y-5">
-              {roster.map((r) => (
-                <li key={r.id}>
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={r.avatar}
-                      alt=""
-                      className="h-8 w-8 shrink-0 rounded-full bg-secondary"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm">{r.name}</p>
-                      <p className="truncate text-[11px] text-muted-foreground">
-                        {r.sheet}
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                      {r.pct}%
-                    </span>
-                  </div>
-                  <Progress value={r.pct} className="mt-2.5 h-1.5" />
+      <SqlPeek sql={SQL} />
+    </div>
+  )
+}
+
+function SheetPanel({ sheetId, onDeleted }: { sheetId: number; onDeleted: () => void }) {
+  const me = useMe()
+  const state = useApi<SheetDetail>(`/sheets/${sheetId}`)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  async function deleteSheet(sheet: SheetDetail) {
+    if (!window.confirm(`Delete “${sheet.title}”? Its problem list is deleted with it.`)) return
+    setDeleting(true)
+    const err = await attempt(() => api.del(`/sheets/${sheet.sheet_id}`))
+    setDeleting(false)
+    setDeleteError(err)
+    if (!err) onDeleted()
+  }
+
+  return (
+    <Card className="overflow-hidden lg:col-span-8">
+      <Loaded state={state}>
+        {(sheet) => {
+          const status = new Map(sheet.attempts.map((a) => [`${a.user_id}:${a.problem_code}`, a.status]))
+          const nextForMe = sheet.problems.find((p) => status.get(`${me.user_id}:${p.problem_code}`) !== 'solved')
+          return (
+            <>
+              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border p-5">
+                <div className="min-w-0">
+                  <h2 className="break-words text-lg font-medium">{sheet.title}</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {sheet.deadline ? `Due ${formatDate(sheet.deadline)} · ${deadlineLabel(sheet.deadline)}` : 'No deadline'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  {nextForMe && (
+                    <Button size="sm" onClick={() => openBeside(problemUrl(nextForMe.problem_code))} title="Opens Codeforces in a window beside this one">
+                      <Play className="h-3.5 w-3.5" /> Practise next: {nextForMe.problem_code}
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Delete sheet"
+                    title="Delete sheet (cascades to sheet_problem)"
+                    disabled={deleting}
+                    onClick={() => deleteSheet(sheet)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
+              </div>
+              {deleteError && (
+                <div className="border-b border-border p-5">
+                  <ErrorNote error={deleteError} />
+                </div>
+              )}
+
+              <div className="scroll-slim overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left">
+                      <th className="w-10 py-3 pl-5 text-[11px] font-normal text-muted-foreground">#</th>
+                      <th className="py-3 text-[11px] font-normal text-muted-foreground">Problem</th>
+                      <th className="w-24 py-3 text-[11px] font-normal text-muted-foreground">Difficulty</th>
+                      {sheet.members.map((m) => (
+                        <th key={m.user_id} className="w-14 py-3 text-center font-normal">
+                          <span title={m.name} className="inline-flex">
+                            <Initials name={m.name} className={cn('h-7 w-7 text-[10px]', m.user_id === me.user_id && 'border-foreground')} />
+                          </span>
+                        </th>
+                      ))}
+                      <th className="w-20 pr-5" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sheet.problems.map((p) => (
+                      <tr key={p.problem_code} className="border-b border-border last:border-0">
+                        <td className="py-3 pl-5 text-xs tabular-nums text-muted-foreground">{p.position}</td>
+                        <td className="py-3">
+                          <span className="mr-2 font-mono text-xs text-muted-foreground">{p.problem_code}</span>
+                          <a href={problemUrl(p.problem_code)} target="_blank" rel="noreferrer" className="hover:underline">
+                            {p.title}
+                          </a>
+                        </td>
+                        <td className="py-3">
+                          <DifficultyBadge difficulty={p.difficulty} />
+                        </td>
+                        {sheet.members.map((m) => (
+                          <td key={m.user_id} className="py-3">
+                            <span className="flex justify-center">
+                              <StatusIcon status={status.get(`${m.user_id}:${p.problem_code}`) ?? 'todo'} />
+                            </span>
+                          </td>
+                        ))}
+                        <td className="whitespace-nowrap py-3 pr-5 text-right">
+                          <button
+                            onClick={() => openBeside(problemUrl(p.problem_code))}
+                            aria-label={`Open ${p.problem_code} beside this window`}
+                            title="Open beside"
+                            className="inline-grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                          >
+                            <PanelRight className="h-4 w-4" />
+                          </button>
+                          <a
+                            href={problemUrl(p.problem_code)}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={`Open ${p.problem_code} on Codeforces`}
+                            className="inline-grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                          >
+                            <ArrowUpRight className="h-4 w-4" />
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t border-border bg-secondary/50">
+                      <td />
+                      <td className="py-3 text-[11px] text-muted-foreground" colSpan={2}>
+                        Solved
+                      </td>
+                      {sheet.members.map((m) => (
+                        <td key={m.user_id} className="py-3 text-center text-xs font-medium tabular-nums">
+                          {m.solved}/{m.total}
+                        </td>
+                      ))}
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </>
+          )
+        }}
+      </Loaded>
+    </Card>
+  )
+}
+
+const RATING_RANGES: Record<string, [number, number] | null> = {
+  any: null,
+  '800-1200': [800, 1200],
+  '1300-1600': [1300, 1600],
+  '1700-2000': [1700, 2000],
+  '2100-2400': [2100, 2400],
+  '2500-3500': [2500, 3500],
+}
+
+function NewSheetDialog({ onCreated }: { onCreated: (id: number) => void }) {
+  const [open, setOpen] = useState(false)
+  const [title, setTitle] = useState('')
+  const [deadline, setDeadline] = useState('')
+  const [picked, setPicked] = useState<CfProblem[]>([])
+  const [text, setText] = useState('')
+  const [tag, setTag] = useState('any')
+  const [range, setRange] = useState('any')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  // Search all of Codeforces (GET /api/codeforces/problems), 300 ms after typing stops.
+  const query = useDebounced(text.trim())
+  const params = new URLSearchParams({ q: query })
+  if (tag !== 'any') params.set('tag', tag)
+  if (RATING_RANGES[range]) {
+    params.set('min_rating', String(RATING_RANGES[range]![0]))
+    params.set('max_rating', String(RATING_RANGES[range]![1]))
+  }
+  const results = useApi<CfProblem[]>(open ? `/codeforces/problems?${params}` : null)
+  const tags = useApi<string[]>(open ? '/codeforces/tags' : null)
+  const shown = (results.data ?? []).filter((p) => !picked.some((x) => x.problem_code === p.problem_code))
+
+  async function save() {
+    setBusy(true)
+    let id = 0
+    const err = await attempt(async () => {
+      const r = await api.post<{ sheet_id: number }>('/sheets', {
+        title,
+        deadline: deadline || null,
+        problem_codes: picked.map((p) => p.problem_code),
+      })
+      id = r.sheet_id
+    })
+    setBusy(false)
+    setError(err)
+    if (!err) {
+      setOpen(false)
+      setTitle('')
+      setDeadline('')
+      setPicked([])
+      setText('')
+      setTag('any')
+      setRange('any')
+      onCreated(id)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => (setOpen(o), setError(null))}>
+      <DialogTrigger asChild>
+        <Button size="pill">
+          <Plus /> New sheet
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>New team sheet</DialogTitle>
+          <DialogDescription>
+            Search any Codeforces problem. The whole team sees the sheet and practises the same set.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Stacked on phones: a date input needs more room than a third of the dialog. */}
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <div className="space-y-1.5">
+              <Label htmlFor="sheet-title">Title</Label>
+              <Input id="sheet-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Graphs week 2" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="sheet-deadline">Deadline</Label>
+              <Input id="sheet-deadline" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+            </div>
+          </div>
+
+          {picked.length > 0 && (
+            <ol className="scroll-slim max-h-36 space-y-1 overflow-y-auto">
+              {picked.map((p, i) => (
+                <li key={p.problem_code} className="flex items-center gap-3 rounded-lg bg-secondary px-3 py-1.5 text-xs">
+                  <span className="w-4 tabular-nums text-muted-foreground">{i + 1}</span>
+                  <span className="w-16 font-mono">{p.problem_code}</span>
+                  <span className="flex-1 truncate">{p.title}</span>
+                  <span className="tabular-nums text-muted-foreground">{p.rating ?? ''}</span>
+                  <button
+                    aria-label={`Remove ${p.problem_code}`}
+                    onClick={() => setPicked((cur) => cur.filter((x) => x.problem_code !== p.problem_code))}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 </li>
               ))}
+            </ol>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="sheet-search">Search Codeforces</Label>
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+              <Input id="sheet-search" value={text} onChange={(e) => setText(e.target.value)} placeholder="Title, or code like 455A / 1520" />
+              <Select value={tag} onValueChange={setTag}>
+                <SelectTrigger aria-label="Tag">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="any">Any tag</SelectItem>
+                  {(tags.data ?? []).map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={range} onValueChange={setRange}>
+                <SelectTrigger aria-label="Rating">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.keys(RATING_RANGES).map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {r === 'any' ? 'Any rating' : r.replace('-', '–')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <ul className="scroll-slim max-h-64 divide-y divide-border overflow-y-auto rounded-lg border border-border">
+              {results.error ? (
+                <li className="px-3 py-4 text-center text-xs">{results.error}</li>
+              ) : results.data === null || results.loading ? (
+                <li className="px-3 py-4 text-center text-xs text-muted-foreground">
+                  {results.data === null ? 'Loading the Codeforces problemset… (a few seconds the first time)' : 'Searching…'}
+                </li>
+              ) : shown.length === 0 ? (
+                <li className="px-3 py-4 text-center text-xs text-muted-foreground">No problems match.</li>
+              ) : (
+                shown.map((p) => (
+                  <li key={p.problem_code} className="flex items-center gap-3 px-3 py-2 text-xs">
+                    <button
+                      type="button"
+                      aria-label={`Add ${p.problem_code} to the sheet`}
+                      onClick={() => setPicked((cur) => [...cur, p])}
+                      className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-border hover:bg-foreground hover:text-background"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="w-14 shrink-0 font-mono text-muted-foreground">{p.problem_code}</span>
+                    <div className="min-w-0 flex-1">
+                      <a href={problemUrl(p.problem_code)} target="_blank" rel="noreferrer" className="block truncate hover:underline">
+                        {p.title}
+                      </a>
+                      <p className="truncate text-[10px] text-muted-foreground">{p.tags.join(' · ') || 'no tags'}</p>
+                    </div>
+                    <span className="w-10 shrink-0 text-right tabular-nums">{p.rating ?? '—'}</span>
+                    <span className="hidden w-16 shrink-0 text-right tabular-nums text-muted-foreground sm:block" title="Solved on Codeforces">
+                      ×{p.solved_count.toLocaleString()}
+                    </span>
+                  </li>
+                ))
+              )}
             </ul>
-
-            <Button
-              variant="secondary"
-              size="sm"
-              className="mt-6 w-full"
-              onClick={() => setCreateOpen(true)}
-            >
-              <Plus className="h-4 w-4" /> Assign a new sheet
-            </Button>
-          </Card>
-        )}
-      </div>
-
-      {/* -------------------------------------------------- Create dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create a practice sheet</DialogTitle>
-            <DialogDescription>
-              Bundle problems into a sequenced set, then assign it to a cohort
-              with a deadline.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="sheet-title">Title</Label>
-              <Input
-                id="sheet-title"
-                placeholder="e.g. Tree DP — Regional Warmup"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="sheet-desc">Description</Label>
-              <Textarea
-                id="sheet-desc"
-                rows={3}
-                placeholder="What should a student be able to do after finishing this sheet?"
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label>Topic</Label>
-                <Select defaultValue={TOPICS[0]}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Topic" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TOPICS.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label>Difficulty</Label>
-                <Select defaultValue="Medium">
-                  <SelectTrigger>
-                    <SelectValue placeholder="Difficulty" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DIFFICULTIES.map((d) => (
-                      <SelectItem key={d} value={d}>
-                        {d}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="sheet-deadline">Deadline</Label>
-                <Input id="sheet-deadline" type="date" defaultValue="2026-08-15" />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="sheet-assign">Assign to</Label>
-                <Input id="sheet-assign" placeholder="Cohort or handles…" />
-              </div>
-            </div>
+            <p className="text-[10px] text-muted-foreground">Newest first · ×N = people who solved it on Codeforces · first 50 matches</p>
           </div>
+          <ErrorNote error={error} />
+        </div>
 
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setCreateOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => setCreateOpen(false)}>Create sheet</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={save} disabled={picked.length === 0 || busy}>
+            {busy ? 'Creating…' : `Create sheet (${picked.length})`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

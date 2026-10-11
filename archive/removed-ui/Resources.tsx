@@ -51,12 +51,12 @@ const TYPE_META: Record<
   Resource['type'],
   { icon: typeof FileText; tile: string }
 > = {
-  Article: { icon: FileText, tile: 'bg-chart-3/15 text-chart-3' },
-  Video: { icon: Video, tile: 'bg-destructive/15 text-destructive' },
-  Notes: { icon: StickyNote, tile: 'bg-warning/15 text-warning' },
-  Roadmap: { icon: Map, tile: 'bg-primary/15 text-primary' },
-  Tutorial: { icon: GraduationCap, tile: 'bg-lime/15 text-lime' },
-  Book: { icon: BookOpen, tile: 'bg-chart-4/15 text-chart-4' },
+  Article: { icon: FileText, tile: 'border border-border bg-card text-foreground' },
+  Video: { icon: Video, tile: 'bg-foreground text-background' },
+  Notes: { icon: StickyNote, tile: 'border border-border bg-secondary text-foreground' },
+  Roadmap: { icon: Map, tile: 'bg-primary text-primary-foreground' },
+  Tutorial: { icon: GraduationCap, tile: 'border border-border bg-card text-foreground' },
+  Book: { icon: BookOpen, tile: 'bg-foreground text-background' },
 }
 
 /** Where you left off in longer-form material. */
@@ -122,10 +122,6 @@ export default function Resources() {
 
       {/* -------------------------------------------------- Featured */}
       <Card className="relative overflow-hidden p-8 sm:p-10">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(700px_320px_at_20%_0%,hsl(var(--primary)/0.28),transparent_70%)]"
-        />
         <div className="relative max-w-2xl">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="default">{featured.type}</Badge>
@@ -136,8 +132,7 @@ export default function Resources() {
           </div>
 
           <h2
-            className="mt-5 text-3xl leading-tight tracking-tight sm:text-4xl"
-            style={{ fontFamily: "'Instrument Serif', serif" }}
+            className="font-display mt-5 text-3xl sm:text-4xl"
           >
             {featured.title}
           </h2>
@@ -167,7 +162,7 @@ export default function Resources() {
               <Bookmark
                 className={cn(
                   'h-4 w-4',
-                  saved.includes(featured.id) && 'fill-current text-primary'
+                  saved.includes(featured.id) && 'fill-current text-foreground'
                 )}
               />
               {saved.includes(featured.id) ? 'Saved' : 'Save for later'}
@@ -215,7 +210,7 @@ export default function Resources() {
               key={t}
               onClick={() => setType(t)}
               className={cn(
-                'rounded-full border border-border/70 px-4 py-1.5 text-xs transition-colors',
+                'rounded-full px-4 py-1.5 text-xs transition-colors',
                 type === t
                   ? 'border-transparent bg-foreground font-medium text-background'
                   : 'text-muted-foreground hover:text-foreground'
@@ -230,7 +225,7 @@ export default function Resources() {
       {/* -------------------------------------------------- Grid */}
       {filtered.length === 0 ? (
         <Card className="flex flex-col items-center gap-3 py-20 text-center">
-          <span className="grid h-14 w-14 place-items-center rounded-2xl bg-secondary text-muted-foreground">
+          <span className="grid h-14 w-14 place-items-center rounded-lg border border-border bg-secondary text-muted-foreground">
             <Search className="h-6 w-6" />
           </span>
           <p className="text-sm font-medium">Nothing matches that search</p>
@@ -255,12 +250,12 @@ export default function Resources() {
             return (
               <Card
                 key={r.id}
-                className="flex flex-col p-6 transition-colors hover:border-primary/40 hover:bg-secondary/25"
+                className="flex flex-col p-6 transition-colors hover:bg-secondary"
               >
                 <div className="flex items-start justify-between gap-3">
                   <span
                     className={cn(
-                      'grid h-11 w-11 shrink-0 place-items-center rounded-2xl',
+                      'grid h-10 w-10 shrink-0 place-items-center rounded-lg',
                       meta.tile
                     )}
                   >
@@ -274,7 +269,7 @@ export default function Resources() {
                     <Bookmark
                       className={cn(
                         'h-4 w-4',
-                        isSaved && 'fill-current text-primary'
+                        isSaved && 'fill-current text-foreground'
                       )}
                     />
                   </button>
@@ -308,8 +303,8 @@ export default function Resources() {
       <div className="grid gap-5 lg:grid-cols-3">
         <Card className="p-6 lg:col-span-2">
           <div className="flex items-center gap-2">
-            <Map className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-medium">Learning paths by topic</h2>
+            <Map className="h-4 w-4 text-foreground" />
+            <h2 className="paper-label text-muted-foreground">Learning paths by topic</h2>
           </div>
           <p className="mt-1.5 text-xs text-muted-foreground">
             Your coverage of the curated material for each area.
@@ -327,13 +322,7 @@ export default function Resources() {
                 <Progress
                   value={p.mastery}
                   className="mt-2.5 h-1.5"
-                  indicatorClassName={
-                    p.mastery >= 70
-                      ? 'bg-success'
-                      : p.mastery >= 45
-                        ? 'bg-warning'
-                        : 'bg-destructive'
-                  }
+                  indicatorClassName="bg-foreground"
                 />
                 <p className="mt-1.5 text-[11px] text-muted-foreground">
                   {p.mastery}% covered
@@ -349,8 +338,8 @@ export default function Resources() {
 
         <Card className="p-6">
           <div className="flex items-center gap-2">
-            <BookOpen className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-medium">Continue where you left off</h2>
+            <BookOpen className="h-4 w-4 text-foreground" />
+            <h2 className="paper-label text-muted-foreground">Continue where you left off</h2>
           </div>
 
           <ul className="mt-6 space-y-5">

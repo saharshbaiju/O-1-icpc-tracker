@@ -10,4 +10,11 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    // The Flask backend (backend/app.py) runs on port 5000. Proxying /api
+    // keeps the browser on one origin, so the login cookie just works.
+    proxy: {
+      '/api': process.env.API_URL ?? 'http://127.0.0.1:5000',
+    },
+  },
 })

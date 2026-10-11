@@ -4,56 +4,54 @@
 
 @layer base {
   :root {
-    --font-display: 'Instrument Serif', serif;
-    --font-body: 'Inter', sans-serif;
+    --font-sans: 'Archivo', system-ui, sans-serif;
 
-    /* Core surfaces — near-black with a violet cast */
-    --background: 255 24% 4%;
-    --foreground: 0 0% 100%;
+    /* Paper palette: warm grey ground, white sheets, black ink. Monochrome throughout. */
+    --background: 60 4% 91%;
+    --foreground: 0 0% 8%;
 
-    --card: 252 20% 8%;
-    --card-foreground: 0 0% 100%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 8%;
 
-    --popover: 252 22% 7%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 8%;
 
-    /* Violet accent */
-    --primary: 258 90% 66%;
+    --primary: 0 0% 8%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 252 16% 13%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 60 3% 95%;
+    --secondary-foreground: 0 0% 8%;
 
-    --muted: 252 16% 13%;
-    --muted-foreground: 252 8% 62%;
+    --muted: 60 3% 86%;
+    --muted-foreground: 0 0% 42%;
 
-    --accent: 252 16% 15%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 60 3% 88%;
+    --accent-foreground: 0 0% 8%;
 
-    --destructive: 0 72% 56%;
+    --destructive: 0 0% 8%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 152 62% 48%;
-    --warning: 38 95% 58%;
-    --lime: 74 90% 62%;
+    --success: 0 0% 8%;
+    --warning: 0 0% 42%;
+    --lime: 0 0% 8%;
 
-    --border: 252 14% 16%;
-    --input: 252 14% 16%;
-    --ring: 258 90% 66%;
+    --border: 0 0% 82%;
+    --input: 0 0% 82%;
+    --ring: 0 0% 8%;
 
-    --radius: 1rem;
+    --radius: 0.75rem;
 
-    /* Difficulty scale */
-    --easy: 152 62% 48%;
-    --medium: 38 95% 58%;
-    --hard: 0 72% 56%;
+    /* Difficulty scale: three greys */
+    --easy: 0 0% 55%;
+    --medium: 0 0% 35%;
+    --hard: 0 0% 8%;
 
-    /* Chart series */
-    --chart-1: 258 90% 66%;
-    --chart-2: 74 90% 62%;
-    --chart-3: 190 90% 55%;
-    --chart-4: 320 80% 65%;
-    --chart-5: 38 95% 58%;
+    /* Chart series: ink steps */
+    --chart-1: 0 0% 8%;
+    --chart-2: 0 0% 40%;
+    --chart-3: 0 0% 60%;
+    --chart-4: 0 0% 75%;
+    --chart-5: 0 0% 25%;
   }
 
   * {
@@ -66,75 +64,63 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-body);
+    font-family: var(--font-sans);
+    font-variation-settings: 'wdth' 100;
+    font-feature-settings: 'tnum' 1, 'ss01' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   ::selection {
-    background: hsl(var(--primary) / 0.35);
+    background: hsl(var(--foreground));
+    color: hsl(var(--background));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
 @layer components {
-  /* Frosted control used on the video hero */
-  .liquid-glass {
-    background: rgba(255, 255, 255, 0.01);
-    background-blend-mode: luminosity;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    border: none;
-    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
-    position: relative;
-    overflow: hidden;
+  /* Display setting: Archivo pushed to its widest, heaviest cut. Headlines and big numbers only. */
+  .font-display {
+    font-family: var(--font-sans);
+    font-variation-settings: 'wdth' 100;
+    font-weight: 400;
+    letter-spacing: -0.03em;
+    line-height: 1;
   }
 
-  .liquid-glass::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1.4px;
-    background: linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.45) 0%,
-      rgba(255, 255, 255, 0.15) 20%,
-      rgba(255, 255, 255, 0) 40%,
-      rgba(255, 255, 255, 0) 60%,
-      rgba(255, 255, 255, 0.15) 80%,
-      rgba(255, 255, 255, 0.45) 100%
-    );
-    -webkit-mask:
-      linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask:
-      linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
-    mask-composite: exclude;
-    pointer-events: none;
+  /* Narrow cut for dense secondary text (meta lines, table heads) */
+  .font-narrow {
+    font-variation-settings: 'wdth' 88;
   }
 
-  /* Standard dashboard surface */
+  /* Standard dashboard surface: a solid fill, nothing else */
   .panel {
-    @apply rounded-3xl border border-border/70 bg-card;
+    @apply rounded-xl border border-border bg-card;
   }
 
   .panel-hover {
-    @apply transition-colors hover:border-border hover:bg-secondary/40;
+    @apply transition-colors hover:bg-accent;
   }
 
   /* Thin scrollbars inside panels */
   .scroll-slim {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--border)) transparent;
+    scrollbar-color: hsl(var(--accent)) transparent;
   }
   .scroll-slim::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   .scroll-slim::-webkit-scrollbar-thumb {
-    background: hsl(var(--border));
+    background: hsl(var(--accent));
     border-radius: 999px;
   }
   .scroll-slim::-webkit-scrollbar-track {
@@ -154,6 +140,7 @@
     }
   }
 
+  /* One orchestrated entrance on the landing hero; nothing else animates on load */
   .animate-fade-rise {
     animation: fade-rise 0.8s ease-out both;
   }
@@ -169,15 +156,73 @@
   .animate-fade-rise-delay-3 {
     animation: fade-rise 0.8s ease-out 0.6s both;
   }
+}
 
-  .text-gradient-violet {
-    background: linear-gradient(
-      120deg,
-      hsl(var(--foreground)) 0%,
-      hsl(var(--primary)) 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+/* ------------------------------------------------------------------
+   Monochrome "paper" scope. Wrap a page in .theme-paper and every token
+   flips to the light, black-on-grey palette used by the landing and auth
+   screens. The dashboard keeps the violet-black theme above untouched.
+   ------------------------------------------------------------------ */
+@layer base {
+  .theme-paper {
+    --background: 60 4% 91%;
+    --foreground: 0 0% 8%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 8%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 8%;
+
+    --primary: 0 0% 8%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 60 3% 95%;
+    --secondary-foreground: 0 0% 8%;
+
+    --muted: 60 3% 86%;
+    --muted-foreground: 0 0% 42%;
+
+    --accent: 60 3% 88%;
+    --accent-foreground: 0 0% 8%;
+
+    --border: 0 0% 82%;
+    --input: 0 0% 82%;
+    --ring: 0 0% 8%;
+
+    --lime: 0 0% 8%;
+    --success: 0 0% 8%;
+
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-variation-settings: 'wdth' 100;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .theme-paper ::selection {
+    background: hsl(var(--foreground));
+    color: hsl(var(--background));
+  }
+}
+
+@layer components {
+  /* Quiet grotesque headline: regular weight, tight leading, no width tricks */
+  .font-headline {
+    font-family: var(--font-sans);
+    font-variation-settings: 'wdth' 100;
+    font-weight: 400;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+
+  /* Tiny uppercase nav labels used across the paper pages */
+  .paper-label {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .paper-input {
+    @apply h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring;
   }
 }
